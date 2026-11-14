@@ -192,8 +192,8 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
         <option value="onnx-community/whisper-tiny">Fast · Whisper tiny · 40 MB</option>
         <option value="onnx-community/whisper-base" selected>Balanced · Whisper base · 80 MB</option>
         <option value="onnx-community/whisper-small">Accurate · Whisper small · 250 MB</option></select></label>
-      <label>Language<select id="txLang">
-        <option value="">Detect automatically</option><option value="english">English</option><option value="urdu">Urdu</option><option value="hindi">Hindi</option><option value="arabic">Arabic</option>
+      <label>Spoken language<select id="txLang">
+        <option value="english">English</option><option value="hindi">Hindi (Devanagari script)</option><option value="urdu">Urdu (Urdu script)</option><option value="arabic">Arabic</option>
         <option value="bengali">Bengali</option><option value="punjabi">Punjabi</option><option value="persian">Persian</option><option value="turkish">Turkish</option><option value="spanish">Spanish</option>
         <option value="french">French</option><option value="german">German</option><option value="portuguese">Portuguese</option><option value="russian">Russian</option><option value="indonesian">Indonesian</option>
         <option value="chinese">Chinese</option><option value="japanese">Japanese</option><option value="korean">Korean</option></select></label>
@@ -202,7 +202,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
       <button class="btn primary" id="txGo">Transcribe</button>
     </div>
     <div class="prog" id="txProg" hidden><i id="txBar"></i></div>
-    <p class="tx-msg" id="txMsg">Transcribes the selected part of your voice note. The model downloads once, then works offline. Repair settings are applied first, which helps on noisy recordings.</p>
+    <p class="tx-msg" id="txMsg">Transcribes the selected part of your voice note. Choose the language that is spoken in the recording; the text comes out in that language unless you tick Translate to English. The model downloads once, then works offline.</p>
     <div class="segs" id="txSegs" hidden></div>
     <div class="tx-actions" id="txActs" hidden>
       <button class="btn" id="txCopy">Copy text</button><button class="btn" id="txCopySrt">Copy subtitles (SRT)</button>
@@ -990,6 +990,8 @@ $('export').onclick=async()=>{
 
 /* ---------- Speech to text (Whisper via transformers.js in a module worker) ---------- */
 const TX_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/transformers.min.js';
+try{const l=localStorage.getItem('vns-lang');if(l&&[...$('txLang').options].some(o=>o.value===l))$('txLang').value=l;}catch(e){}
+$('txLang').onchange=()=>{try{localStorage.setItem('vns-lang',$('txLang').value);}catch(e){}};
 var txWorker=null,txBusy=false,txSegs=[],txMeta=null,txLast=-1; // var: read by the playback loop before this block runs
 function txWorkerSrc(){return `import { pipeline, env } from '${TX_LIB}';
 env.allowLocalModels=false;
@@ -1028,7 +1030,7 @@ $('txGo').onclick=async()=>{
       else if(d.type==='run'){clearTimeout(timer);txProg(0.95);txMsg('Transcribing '+txMeta.dur.toFixed(1)+' s of audio…');}
       else if(d.type==='done'){clearTimeout(timer);txDone(d.out);}
       else if(d.type==='error'){clearTimeout(timer);txFail(d.message);}};
-    txWorker.postMessage({model:$('txModel').value,language:$('txLang').value||null,translate:$('txTrans').checked,audio});
+    txWorker.postMessage({model:$('txModel').value,language:$('txLang').value,translate:$('txTrans').checked,audio});
   }catch(e){txFail(e.message);}
 };
 function txFail(why){txBusy=false;$('txGo').disabled=false;txProg(null);

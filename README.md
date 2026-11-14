@@ -26,7 +26,7 @@
 
 **Speech to text**
 - Whisper speech recognition (tiny, base or small model) running on your device via transformers.js. The model downloads from huggingface.co once, then your browser caches it.
-- 17 languages or auto-detect, plus "Translate to English"
+- 17 languages (choose the spoken language; transformers.js has no automatic language detection and would otherwise assume English), plus "Translate to English"
 - Can listen to the cleaned voice (after Repair) for better accuracy on noisy notes
 - Editable transcript with clickable timestamps that jump playback; the current line highlights while playing
 - Copy or save as plain text or SRT subtitles
