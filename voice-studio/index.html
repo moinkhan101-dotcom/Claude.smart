@@ -126,6 +126,24 @@ input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:line
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--panel);border:2px solid var(--ink);margin-top:-5px}
 input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--ink)}
 
+.tx{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.tx-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tx-head h2{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0}
+.tx-opts{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:end}
+.tx-opts label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.tx-opts .chk{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:13px;padding-bottom:6px}
+.prog{height:6px;border-radius:3px;background:var(--panel-2);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.tx-msg{font-size:13px;color:var(--muted);margin:0}
+.tx-msg.bad{color:var(--hot)}
+.segs{display:flex;flex-direction:column;max-height:360px;overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.seg-row{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:8px 12px;border-bottom:1px solid var(--line);align-items:baseline}
+.seg-row:last-child{border-bottom:0}
+.seg-row.now{background:var(--accent-soft)}
+.seg-row button{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--accent);background:none;border:0;padding:0;cursor:pointer}
+.seg-row div{font-size:14.5px;line-height:1.5;min-width:0;overflow-wrap:anywhere;outline:none;border-radius:4px}
+.seg-row div:focus{box-shadow:0 0 0 2px var(--accent)}
+.tx-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:10px 16px;border-radius:10px;font-size:13px;max-width:min(92vw,520px);box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:20}
 .foot{color:var(--muted);font-size:12px;max-width:80ch;display:flex;flex-direction:column;gap:6px}
 .foot p{margin:0}
@@ -174,6 +192,32 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
     </div>
   </section>
 
+  <section class="tx" aria-label="Transcript">
+    <div class="tx-head"><h2>Speech to text</h2><span class="hint">Whisper speech recognition, running on your device. Click a timestamp to play from there; click text to fix a word.</span></div>
+    <div class="tx-opts">
+      <label>Model<select id="txModel">
+        <option value="onnx-community/whisper-tiny">Fast · Whisper tiny · 40 MB</option>
+        <option value="onnx-community/whisper-base" selected>Balanced · Whisper base · 80 MB</option>
+        <option value="onnx-community/whisper-small">Accurate · Whisper small · 250 MB</option></select></label>
+      <label>Language<select id="txLang">
+        <option value="">Detect automatically</option><option value="english">English</option><option value="urdu">Urdu</option><option value="hindi">Hindi</option><option value="arabic">Arabic</option>
+        <option value="bengali">Bengali</option><option value="punjabi">Punjabi</option><option value="persian">Persian</option><option value="turkish">Turkish</option><option value="spanish">Spanish</option>
+        <option value="french">French</option><option value="german">German</option><option value="portuguese">Portuguese</option><option value="russian">Russian</option><option value="indonesian">Indonesian</option>
+        <option value="chinese">Chinese</option><option value="japanese">Japanese</option><option value="korean">Korean</option></select></label>
+      <label>Listen to<select id="txSrc"><option value="clean">Cleaned voice (after Repair)</option><option value="orig">Original recording</option></select></label>
+      <label class="chk"><input type="checkbox" id="txTrans"> Translate to English</label>
+      <button class="btn primary" id="txGo">Transcribe</button>
+    </div>
+    <div class="prog" id="txProg" hidden><i id="txBar"></i></div>
+    <p class="tx-msg" id="txMsg">Transcribes the selected part of your voice note. The model downloads once, then works offline. Repair settings are applied first, which helps on noisy recordings.</p>
+    <div class="segs" id="txSegs" hidden></div>
+    <div class="tx-actions" id="txActs" hidden>
+      <button class="btn" id="txCopy">Copy text</button><button class="btn" id="txCopySrt">Copy subtitles (SRT)</button>
+      <button class="btn" id="txSave">Save .txt</button><button class="btn" id="txSaveSrt">Save subtitles</button>
+      <span class="hint mono" id="txStats"></span>
+    </div>
+  </section>
+
   <section class="bank" aria-label="Presets" id="bank"></section>
 
   <section>
@@ -183,6 +227,7 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
 
   <div class="foot">
     <p>Opens most voice note formats your browser can decode: WhatsApp and Telegram .opus/.ogg, iPhone .m4a, .mp3, .wav, .webm. Audio is processed at 48 kHz and exported as 16-bit WAV.</p>
+    <p>Speech to text uses OpenAI's open-source Whisper models through transformers.js (Hugging Face). The model files download from huggingface.co on first use and are cached by your browser. If this view blocks the download, open the standalone <span class="mono">voice-studio/index.html</span> in Chrome, Edge or Firefox.</p>
     <p>AI voice isolation uses the open-source RNNoise model (Xiph.Org) in the @jitsi/rnnoise-wasm build, downloaded once from jsDelivr (1.9 MB) when you switch it on. If your browser blocks it, the spectral noise reduction module still works offline.</p>
   </div>
 </div>
@@ -860,6 +905,7 @@ const mbuf=new Float32Array(2048);
   if(playing&&analyser){updateClock();analyser.getFloatTimeDomainData(mbuf);let pk=0;for(const v of mbuf){const a=Math.abs(v);if(a>pk)pk=a;}
     const d=Math.max(-60,toDb(pk));if(d>peakHold||performance.now()-peakT>1200){peakHold=d;peakT=performance.now();}setMeter(d,peakHold);}
   else setMeter(-60,-60);
+  txHighlight();
   requestAnimationFrame(tick);})();
 function setMeter(d,p){const f=(d+60)/60,pf=(p+60)/60,el=$('mFill');el.style.width=(f*100)+'%';el.style.setProperty('--mw',(f>0?100/f:100)+'%');$('mPeak').style.left='calc('+(pf*100)+'% - 2px)';$('mPeak').hidden=p<=-59;}
 
@@ -871,6 +917,7 @@ async function to48k(buf){
 async function setSource(buf,name){
   stopPlay();status(true,'Preparing…');srcBuf=await to48k(buf);srcName=name;trim=[0,srcBuf.duration];
   for(const k in cache)cache[k]={};outBuf=null;
+  if(txSegs&&txSegs.length){txSegs=[];$('txSegs').hidden=true;$('txActs').hidden=true;}
   $('srcEmpty').hidden=true;updateSel();measureSrc();drawWave($('srcCv'),srcBuf);
   await render();}
 async function decode(arr){const c=new OfflineAudioContext(1,1,44100);return await new Promise((res,rej)=>{const p=c.decodeAudioData(arr,res,rej);if(p&&p.then)p.then(res,rej);});}
@@ -943,6 +990,86 @@ $('export').onclick=async()=>{
   else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([wav],{type:'audio/wav'}));a.download=base+'.wav';document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Exported '+base+'.wav');}
 };
+
+/* ---------- Speech to text (Whisper via transformers.js in a module worker) ---------- */
+const TX_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/transformers.min.js';
+var txWorker=null,txBusy=false,txSegs=[],txMeta=null,txLast=-1; // var: read by the playback loop before this block runs
+function txWorkerSrc(){return `import { pipeline, env } from '${TX_LIB}';
+env.allowLocalModels=false;
+let asr=null,cur=null;
+self.onmessage=async e=>{const d=e.data;
+  try{
+    if(!asr||cur!==d.model){const files={};
+      asr=await pipeline('automatic-speech-recognition',d.model,{dtype:'q8',device:'wasm',progress_callback:p=>{
+        if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const k in files){a+=files[k][0];b+=files[k][1];}self.postMessage({type:'dl',loaded:a,total:b});}}});
+      cur=d.model;}
+    self.postMessage({type:'run'});
+    const o={chunk_length_s:30,stride_length_s:5,return_timestamps:true,task:d.translate?'translate':'transcribe'};
+    if(d.language)o.language=d.language;
+    const out=await asr(d.audio,o);
+    self.postMessage({type:'done',out});
+  }catch(err){self.postMessage({type:'error',message:String(err&&err.message||err)});}
+};`;}
+function txMsg(t,bad){const m=$('txMsg');m.textContent=t;m.classList.toggle('bad',!!bad);}
+function txProg(f){$('txProg').hidden=f==null;if(f!=null)$('txBar').style.width=(Math.max(0,Math.min(1,f))*100)+'%';}
+async function to16kMono(ch){const n=ch[0].length,b=new AudioBuffer({length:n,numberOfChannels:1,sampleRate:SR});b.copyToChannel(local.mono(ch),0);
+  const ctx=new OfflineAudioContext(1,Math.ceil(n/3),16000),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();return (await ctx.startRendering()).getChannelData(0);}
+$('txGo').onclick=async()=>{
+  if(!srcBuf)return toast('Open a voice note first.');if(txBusy)return;
+  txBusy=true;$('txGo').disabled=true;txProg(0);txMsg('Preparing audio…');
+  try{
+    const useClean=$('txSrc').value==='clean'&&cache.rep.ch;
+    const ch=useClean?cache.rep.ch:(cache.base.ch||baseChannels());
+    const audio=await to16kMono(ch);
+    txMeta={tempo:S.pitch.on?S.pitch.tempo/100:1,rev:S.out.rev,dur:audio.length/16000};
+    if(!txWorker){const url=URL.createObjectURL(new Blob([txWorkerSrc()],{type:'text/javascript'}));txWorker=new Worker(url,{type:'module'});}
+    txMsg('Loading the speech model…');
+    const timer=setTimeout(()=>{if(txBusy&&$('txBar').style.width==='0%')txFail('The speech model did not start downloading.');},45000);
+    txWorker.onerror=ev=>{if(ev.preventDefault)ev.preventDefault();clearTimeout(timer);txWorker=null;txFail('The speech-recognition library could not load.');};
+    txWorker.onmessage=e=>{const d=e.data;
+      if(d.type==='dl'){txProg(d.loaded/d.total*0.9);txMsg('Downloading model: '+(d.loaded/1048576).toFixed(0)+' of '+(d.total/1048576).toFixed(0)+' MB (one time only)…');}
+      else if(d.type==='run'){clearTimeout(timer);txProg(0.95);txMsg('Transcribing '+txMeta.dur.toFixed(1)+' s of audio…');}
+      else if(d.type==='done'){clearTimeout(timer);txDone(d.out);}
+      else if(d.type==='error'){clearTimeout(timer);txFail(d.message);}};
+    txWorker.postMessage({model:$('txModel').value,language:$('txLang').value||null,translate:$('txTrans').checked,audio});
+  }catch(e){txFail(e.message);}
+};
+function txFail(why){txBusy=false;$('txGo').disabled=false;txProg(null);
+  txMsg('Speech to text could not run here ('+why+'). This view may block the model download from huggingface.co. Open the standalone voice-studio/index.html in Chrome, Edge or Firefox, where it runs on your device.',true);}
+function txDone(out){
+  txBusy=false;$('txGo').disabled=false;txProg(null);
+  const chunks=(out&&out.chunks&&out.chunks.length)?out.chunks:[{timestamp:[0,txMeta.dur],text:(out&&out.text)||''}];
+  txSegs=chunks.map(c=>({a:c.timestamp[0]||0,b:c.timestamp[1]==null?txMeta.dur:c.timestamp[1],text:(c.text||'').trim()})).filter(s=>s.text);
+  const box=$('txSegs');box.innerHTML='';
+  if(!txSegs.length){txMsg('No speech was found in this selection.');box.hidden=true;$('txActs').hidden=true;return;}
+  txSegs.forEach((s,i)=>{const r=document.createElement('div');r.className='seg-row';
+    const b=document.createElement('button');b.textContent=fmtT(s.a).replace(/\.\d+$/,'');b.title='Play from here';b.onclick=()=>seekToSpeech(s.a);
+    const t=document.createElement('div');t.contentEditable='true';t.spellcheck=true;t.textContent=s.text;t.oninput=()=>{s.text=t.textContent;txStats();};
+    r.append(b,t);s.el=r;box.append(r);});
+  box.hidden=false;$('txActs').hidden=false;txStats();
+  txMsg('Done. '+(txMeta.rev?'The clip is reversed, so timestamps will not line up with playback. ':'')+'Click any line to correct it before copying or saving.');
+}
+function txStats(){const words=txSegs.map(s=>s.text).join(' ').split(/\s+/).filter(Boolean).length,d=txMeta?txMeta.dur:0;
+  $('txStats').textContent=words+' words · '+(d>0?Math.round(words/d*60):0)+' words/min';}
+function outTime(t){return txMeta?t/txMeta.tempo:t;}
+function seekToSpeech(t){if(abOrig){abOrig=false;$('ab').setAttribute('aria-pressed',false);}offset=Math.min(outTime(t),curDur()-0.01);play(offset);}
+const srtT=t=>{const ms=Math.round(t*1000),h=Math.floor(ms/3600000),m=Math.floor(ms/60000)%60,s=Math.floor(ms/1000)%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+','+String(ms%1000).padStart(3,'0');};
+const txPlain=()=>txSegs.map(s=>s.text).join(' ').replace(/\s+/g,' ').trim();
+const txTimed=()=>txSegs.map(s=>'['+fmtT(s.a).replace(/\.\d+$/,'')+'] '+s.text).join('\n');
+const txSrt=()=>txSegs.map((s,i)=>(i+1)+'\n'+srtT(outTime(s.a))+' --> '+srtT(outTime(s.b))+'\n'+s.text).join('\n\n')+'\n';
+async function copyText(t,what){try{await navigator.clipboard.writeText(t);toast(what+' copied.');}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.append(ta);ta.select();let ok=false;try{ok=document.execCommand('copy');}catch(_){}ta.remove();toast(ok?what+' copied.':'Copy is blocked here. Select the text in the transcript and copy it manually.');}}
+$('txCopy').onclick=()=>copyText(txPlain(),'Transcript');
+$('txCopySrt').onclick=()=>copyText(txSrt(),'Subtitles');
+async function saveFile(name,text,zipIt){
+  if(downloads){try{await downloads.save(zipIt?{filename:name.replace(/\.[^.]+$/,'')+'.zip',data:zipOne(name,new TextEncoder().encode(text))}:{filename:name,data:text});toast('Saved '+name+(zipIt?' (inside a .zip)':''));}
+    catch(e){toast(e&&e.code==='declined'?'Save cancelled.':'Saving is not available in this view. Use Copy instead.');}return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'}));a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Saved '+name);}
+const txBase=()=>(srcName&&!srcName.startsWith('Sample')?srcName.replace(/\.[^.]+$/,''):'voice-note');
+$('txSave').onclick=()=>saveFile(txBase()+'-transcript.txt',txPlain()+'\n\n'+txTimed()+'\n',false);
+$('txSaveSrt').onclick=()=>saveFile(txBase()+'.srt',txSrt(),!!downloads);
+function txHighlight(){if(!txSegs||!txSegs.length)return;let idx=-1;
+  if(playing&&!abOrig&&txMeta&&!txMeta.rev){const p=pos();idx=txSegs.findIndex(s=>p>=outTime(s.a)&&p<outTime(s.b));}
+  if(idx!==txLast){if(txLast>=0&&txSegs[txLast])txSegs[txLast].el.classList.remove('now');if(idx>=0){txSegs[idx].el.classList.add('now');}txLast=idx;}}
 
 /* ---------- Boot: noisy sample with the Studio enhance chain applied ---------- */
 syncUI();updateSel();

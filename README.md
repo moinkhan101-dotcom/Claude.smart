@@ -24,6 +24,14 @@
 - 16-bit WAV export with TPDF dither
 - Before/after background-noise readout and a spectrogram view
 
+**Speech to text**
+- Whisper speech recognition (tiny, base or small model) running on your device via transformers.js. The model downloads from huggingface.co once, then your browser caches it.
+- 17 languages or auto-detect, plus "Translate to English"
+- Can listen to the cleaned voice (after Repair) for better accuracy on noisy notes
+- Editable transcript with clickable timestamps that jump playback; the current line highlights while playing
+- Copy or save as plain text or SRT subtitles
+- The published Artifact view blocks the model download, so use the standalone `index.html` for transcription
+
 **Presets:** Studio enhance, Isolate voice and Remove hiss/hum (Repair presets stack with the others), Male → Female, Female → Male, Child, Giant, Robot, Whisper, Choir, Telephone, Radio, Cathedral, Podcast, ASMR and more.
 
 **Performance:** heavy DSP runs in a Web Worker, and each stage is cached, so changing a reverb setting doesn't re-run noise reduction. All processing runs at 48 kHz.
