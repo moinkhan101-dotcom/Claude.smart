@@ -11,11 +11,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a mixing desk. Deck (waveforms + transport) on top, preset bank, then a rack of effect modules in flowing columns. */
+/* Layout: a mixing desk. Deck (waveforms + transport) on top, preset bank, then a rack of effect modules grouped by stage of the signal chain. */
 :root{
   --bg:#E8EBEF; --panel:#F8F9FB; --panel-2:#E0E4EA; --ink:#15181D; --muted:#5B6371; --line:#CBD1DA;
-  --accent:#2B47D6; --accent-ink:#FFFFFF; --accent-soft:#DCE2FB; --wave:#2B47D6; --wave-dim:#9AA6C9;
-  --ok:#1E9E5A; --warn:#D9961A; --hot:#D23B2E;
+  --accent:#2B47D6; --accent-ink:#FFFFFF; --accent-soft:#DCE2FB; --wave:#2B47D6; --spec-lo:#E0E4EA; --spec-hi:#1A2FA0;
+  --ok:#1E9E5A; --warn:#C7860F; --hot:#D23B2E;
   --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -23,11 +23,11 @@
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#101318; --panel:#181C23; --panel-2:#222833; --ink:#E6E9EF; --muted:#959EAD; --line:#2D3440;
-  --accent:#8C9FFF; --accent-ink:#0E1222; --accent-soft:#252C4A; --wave:#8C9FFF; --wave-dim:#4A5578;
+  --accent:#8C9FFF; --accent-ink:#0E1222; --accent-soft:#252C4A; --wave:#8C9FFF; --spec-lo:#141821; --spec-hi:#B8C4FF;
   --ok:#3DC47C; --warn:#E8AE3C; --hot:#F0645A; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#101318; --panel:#181C23; --panel-2:#222833; --ink:#E6E9EF; --muted:#959EAD; --line:#2D3440;
-  --accent:#8C9FFF; --accent-ink:#0E1222; --accent-soft:#252C4A; --wave:#8C9FFF; --wave-dim:#4A5578;
+  --accent:#8C9FFF; --accent-ink:#0E1222; --accent-soft:#252C4A; --wave:#8C9FFF; --spec-lo:#141821; --spec-hi:#B8C4FF;
   --ok:#3DC47C; --warn:#E8AE3C; --hot:#F0645A; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -38,25 +38,22 @@ button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
-/* Header */
 .top{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;justify-content:space-between}
 .brand h1{font-family:var(--f-display);font-weight:700;font-size:clamp(26px,4vw,36px);letter-spacing:-.02em;margin:0;line-height:1;text-wrap:balance}
-.brand p{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.brand p{margin:6px 0 0;color:var(--muted);max-width:62ch}
 .src-actions{display:flex;flex-wrap:wrap;gap:8px}
 .btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:500;white-space:nowrap}
 .btn:hover{border-color:var(--muted)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.rec[aria-pressed="true"]{background:var(--hot);border-color:var(--hot);color:#fff}
 .btn svg{width:15px;height:15px;flex:none}
-.btn:disabled{opacity:.5;cursor:default}
 
-/* Deck */
 .deck{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
-.track-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.track-head{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
 .lbl{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .track-head .meta{color:var(--muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .wave{position:relative;height:84px;border-radius:8px;background:var(--panel-2);overflow:hidden;touch-action:none}
-.wave.out{height:120px;cursor:pointer}
+.wave.out{height:128px;cursor:pointer}
 .wave.src{cursor:crosshair}
 .wave canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .dim{position:absolute;top:0;bottom:0;background:var(--bg);opacity:.72;pointer-events:none}
@@ -66,41 +63,51 @@ button{font:inherit;color:inherit}
 .ph{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);pointer-events:none;left:0}
 .empty-wave{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;pointer-events:none}
 .hint{font-size:12px;color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:3px 10px;font-size:12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted)}
+.stats b{font-weight:500;color:var(--ink);font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 
 .transport{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}
 .tbtn{width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer}
 .tbtn.play{background:var(--ink);color:var(--panel);border-color:var(--ink);width:52px;height:52px}
 .tbtn svg{width:18px;height:18px}
 .tog{border:1px solid var(--line);background:transparent;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500}
-.tog[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.tog[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
 .clock{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:15px;min-width:13ch}
 .meter{flex:1 1 180px;min-width:140px;display:flex;flex-direction:column;gap:3px}
 .meter-bar{height:10px;border-radius:3px;background:var(--panel-2);position:relative;overflow:hidden}
 .meter-fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--ok) 0 70%,var(--warn) 70% 88%,var(--hot) 88%);background-size:var(--mw,100%) 100%}
 .meter-peak{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);left:0}
 .meter-scale{display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--muted)}
-.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);min-width:12ch}
 .status i{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
 .status.busy i{background:var(--warn);animation:pulse .8s infinite alternate}
 @keyframes pulse{to{opacity:.3}}
-.spacer{flex:1}
 
-/* Presets */
 .bank{display:flex;flex-direction:column;gap:10px}
 .bank-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.bank-row .lbl{width:72px;flex:none}
+.bank-row .lbl{width:104px;flex:none}
 .chip{border:1px solid var(--line);background:var(--panel);padding:6px 12px;border-radius:999px;cursor:pointer;font-size:13px}
 .chip:hover{border-color:var(--muted)}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.chip.key{border-color:var(--accent);color:var(--accent);font-weight:600}
+.chip.key[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
 
-/* Rack */
 .rack-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
 .rack-head h2{font-family:var(--f-display);font-weight:600;font-size:20px;margin:0}
-.rack{columns:285px;column-gap:14px}
+.rack{columns:285px;column-gap:14px;margin-top:4px}
+.grp{column-span:all;display:flex;align-items:baseline;gap:10px;margin:14px 0 10px;padding-top:10px;border-top:1px solid var(--line)}
+.grp:first-child{margin-top:0}
+.grp h3{margin:0;font-family:var(--f-display);font-size:15px;font-weight:600}
+.grp span{font-size:12px;color:var(--muted)}
 .mod{break-inside:avoid;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px 14px;margin:0 0 14px;display:flex;flex-direction:column;gap:10px}
 .mod header{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.mod h3{margin:0;font-size:14px;font-weight:600}
+.mod h4{margin:0;font-size:14px;font-weight:600}
 .mod .desc{margin:-6px 0 0;font-size:12px;color:var(--muted)}
+.mod .badge{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--panel-2);color:var(--muted);align-self:flex-start;margin-top:-4px}
+.badge.ok{color:var(--ok)}.badge.bad{color:var(--hot)}
 .mod .ctls{display:flex;flex-direction:column;gap:9px}
 .mod:not(.on) .ctls{opacity:.5}
 .mod.on{border-color:color-mix(in srgb,var(--accent) 55%,var(--line))}
@@ -109,11 +116,10 @@ button{font:inherit;color:inherit}
 .pwr[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
 .pwr[aria-checked="true"]::after{transform:translateX(16px);background:var(--accent-ink)}
 .ctl{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
-.ctl .cl{font-size:12.5px;color:var(--ink)}
+.ctl .cl{font-size:12.5px}
 .ctl output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted)}
 .ctl input[type=range]{grid-column:1/-1}
-.ctl.sw{grid-template-columns:1fr auto}
-select{font:inherit;font-size:12.5px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px}
+select{font:inherit;font-size:12.5px;background:var(--panel-2);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:3px 6px;max-width:100%}
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;margin:0;cursor:pointer;--p:50%}
 input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent) var(--p),var(--line) var(--p))}
 input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--accent) var(--p),var(--line) var(--p))}
@@ -121,7 +127,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;heigh
 input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;background:var(--panel);border:2px solid var(--ink)}
 
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--panel);padding:10px 16px;border-radius:10px;font-size:13px;max-width:min(92vw,520px);box-shadow:0 8px 24px rgba(0,0,0,.2);z-index:20}
-.foot{color:var(--muted);font-size:12px;max-width:75ch}
+.foot{color:var(--muted);font-size:12px;max-width:80ch;display:flex;flex-direction:column;gap:6px}
+.foot p{margin:0}
 .drop{position:fixed;inset:0;background:color-mix(in srgb,var(--accent) 18%,transparent);border:3px dashed var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-size:24px;z-index:30;pointer-events:none}
 @media (max-width:560px){.bank-row .lbl{width:100%}.clock{min-width:0}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -131,25 +138,27 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
   <div class="top">
     <div class="brand">
       <h1>Voice Note Studio</h1>
-      <p>Open a voice note, pick a preset or stack effects in the rack, and export. Audio is processed in your browser and never uploaded.</p>
+      <p>Clean up a voice note, change how it sounds, and export it. Everything runs in your browser; your audio is never uploaded.</p>
     </div>
     <div class="src-actions">
       <label class="btn primary" for="file">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>Open audio
       </label>
       <input id="file" type="file" accept="audio/*,.opus,.ogg,.m4a,.aac,.amr,.wav,.mp3,.webm,video/*" hidden>
-      <button class="btn rec" id="rec" aria-pressed="false">
-        <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg><span>Record</span>
-      </button>
-      <button class="btn" id="demo">Load sample</button>
+      <button class="btn rec" id="rec" aria-pressed="false"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg><span>Record</span></button>
+      <button class="btn" id="demo">Load noisy sample</button>
     </div>
   </div>
 
   <section class="deck" aria-label="Player">
     <div class="track-head"><span class="lbl">Source · drag to select the part to keep</span><span class="meta mono" id="srcMeta">—</span></div>
     <div class="wave src" id="srcWave"><canvas id="srcCv"></canvas><div class="dim" id="dimL"></div><div class="dim" id="dimR"></div><div class="sel" id="sel"></div><div class="ph" id="srcPh" hidden></div><div class="empty-wave" id="srcEmpty">No audio loaded</div></div>
-    <div class="track-head"><span class="lbl">Output · click to seek</span><span class="meta mono" id="outMeta">—</span></div>
+    <div class="track-head">
+      <span class="lbl">Output · click to seek</span>
+      <span class="seg" role="group" aria-label="Output view"><button id="vWave" aria-pressed="true">Waveform</button><button id="vSpec" aria-pressed="false">Spectrogram</button></span>
+    </div>
     <div class="wave out" id="outWave"><canvas id="outCv"></canvas><div class="ph" id="outPh"></div></div>
+    <div class="stats" id="stats"><span>Length <b id="stLen">—</b></span><span>Loudness <b id="stLufs">—</b></span><span>Peak <b id="stPeak">—</b></span><span>Background noise <b id="stNoise">—</b></span></div>
     <div class="transport">
       <button class="tbtn" id="stop" aria-label="Stop"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
       <button class="tbtn play" id="play" aria-label="Play"><svg id="playIco" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
@@ -168,370 +177,660 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
   <section class="bank" aria-label="Presets" id="bank"></section>
 
   <section>
-    <div class="rack-head"><h2>Effects rack</h2><span class="hint">Signal flows top to bottom, left to right. Double-click a slider to reset it.</span></div>
-    <div class="rack" id="rack" style="margin-top:12px"></div>
+    <div class="rack-head"><h2>Effects rack</h2><span class="hint">Signal flows top to bottom. Moving a slider switches its module on. Double-click a slider to reset it.</span></div>
+    <div class="rack" id="rack"></div>
   </section>
 
-  <p class="foot">Opens most voice note formats your browser can decode: WhatsApp and Telegram .opus/.ogg, iPhone .m4a, .mp3, .wav, .webm. Chrome and Firefox handle .opus best. Recording needs microphone access; if this view blocks it, record on your phone and open the file here.</p>
+  <div class="foot">
+    <p>Opens most voice note formats your browser can decode: WhatsApp and Telegram .opus/.ogg, iPhone .m4a, .mp3, .wav, .webm. Audio is processed at 48 kHz and exported as 16-bit WAV.</p>
+    <p>AI voice isolation uses the open-source RNNoise model (Xiph.Org) in the @jitsi/rnnoise-wasm build, downloaded once from jsDelivr (1.9 MB) when you switch it on. If your browser blocks it, the spectral noise reduction module still works offline.</p>
+  </div>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="drop" id="drop" hidden>Drop audio to open</div>
 
 <script>
+/* ===================== DSP core =====================
+   Self-contained: runs inside a Web Worker (built from this function's source) and on the main thread as a fallback. */
+function DSP(){
+"use strict";
+const dB=v=>Math.pow(10,v/20);
+const tabs={},wins={};
+function tab(N){if(tabs[N])return tabs[N];const rev=new Uint32Array(N),bits=Math.round(Math.log2(N));
+  for(let i=0;i<N;i++){let r=0,x=i;for(let b=0;b<bits;b++){r=(r<<1)|(x&1);x>>=1;}rev[i]=r;}
+  const c=new Float64Array(N/2),s=new Float64Array(N/2);for(let i=0;i<N/2;i++){c[i]=Math.cos(2*Math.PI*i/N);s[i]=-Math.sin(2*Math.PI*i/N);}
+  return tabs[N]={rev,c,s};}
+function fft(re,im,inv){const N=re.length,{rev,c,s}=tab(N);
+  for(let i=0;i<N;i++){const j=rev[i];if(j>i){let t=re[i];re[i]=re[j];re[j]=t;t=im[i];im[i]=im[j];im[j]=t;}}
+  for(let size=2;size<=N;size<<=1){const h=size>>1,st=N/size;
+    for(let i=0;i<N;i+=size)for(let j=0,k=0;j<h;j++,k+=st){const wr=c[k],wi=inv?-s[k]:s[k],a=i+j,b=a+h;
+      const tr=re[b]*wr-im[b]*wi,ti=re[b]*wi+im[b]*wr;re[b]=re[a]-tr;im[b]=im[a]-ti;re[a]+=tr;im[a]+=ti;}}
+  if(inv)for(let i=0;i<N;i++){re[i]/=N;im[i]/=N;}}
+function hann(N){if(!wins[N]){const w=new Float64Array(N);for(let i=0;i<N;i++)w[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);wins[N]=w;}return wins[N];}
+function mirror(re,im,N){im[0]=0;im[N/2]=0;for(let k=1;k<N/2;k++){re[N-k]=re[k];im[N-k]=-im[k];}}
+/* Short-time Fourier transform with weighted overlap-add. fn edits bins 0..N/2 of each frame; mirroring is done here. */
+function stft(x,N,H,fn){const win=hann(N),L=x.length,out=new Float32Array(L),ws=new Float32Array(L),re=new Float64Array(N),im=new Float64Array(N);
+  for(let s=-N+H,f=0;s<L;s+=H,f++){
+    for(let i=0;i<N;i++){const j=s+i;re[i]=(j>=0&&j<L)?x[j]*win[i]:0;im[i]=0;}
+    fft(re,im,false);fn(re,im,f);mirror(re,im,N);fft(re,im,true);
+    for(let i=0;i<N;i++){const j=s+i;if(j>=0&&j<L){out[j]+=re[i]*win[i];ws[j]+=win[i]*win[i];}}}
+  for(let i=0;i<L;i++)out[i]=ws[i]>1e-6?out[i]/ws[i]:0;return out;}
+function bq(type,f,Q,sr){const w=2*Math.PI*Math.min(f,sr*0.49)/sr,cs=Math.cos(w),al=Math.sin(w)/(2*Q);let b0,b1,b2;
+  if(type==='lowpass'){b0=(1-cs)/2;b1=1-cs;b2=b0;}else if(type==='highpass'){b0=(1+cs)/2;b1=-(1+cs);b2=b0;}else{b0=1;b1=-2*cs;b2=1;}
+  const a0=1+al;return [b0/a0,b1/a0,b2/a0,-2*cs/a0,(1-al)/a0];}
+function filt(x,c){const[b0,b1,b2,a1,a2]=c;let x1=0,x2=0,y1=0,y2=0;for(let i=0;i<x.length;i++){const xi=x[i],y=b0*xi+b1*x1+b2*x2-a1*y1-a2*y2;x2=x1;x1=xi;y2=y1;y1=y;x[i]=y;}return x;}
+function mono(ch){if(ch.length===1)return ch[0];const n=ch[0].length,m=new Float32Array(n);for(const c of ch)for(let i=0;i<n;i++)m[i]+=c[i]/ch.length;return m;}
+
+/* WSOLA time-stretch: coarse-to-fine waveform-similarity search keeps speech crisp. */
+function wsola(x,alpha,sr){
+  const N=2*Math.round(sr*0.015),Hs=N/2,Ha=Hs/alpha,tol=Math.round(sr*0.006);
+  const outLen=Math.ceil(x.length*alpha),y=new Float32Array(outLen+N),w=new Float32Array(outLen+N),win=hann(N);
+  let prev=0;
+  for(let k=0;;k++){const o=k*Hs;if(o>=outLen)break;const nom=Math.round(k*Ha);if(nom>=x.length)break;let best=nom;
+    if(k>0){const ref=prev+Hs,lo=Math.max(0,nom-tol),hi=Math.min(x.length-N,nom+tol);
+      if(ref+N<=x.length&&hi>=lo){let bc=-Infinity;
+        for(let p=lo;p<=hi;p+=4){let c=0;for(let i=0;i<N;i+=4)c+=x[ref+i]*x[p+i];if(c>bc){bc=c;best=p;}}
+        const c0=best;for(let p=Math.max(lo,c0-3);p<=Math.min(hi,c0+3);p++){let c=0;for(let i=0;i<N;i+=2)c+=x[ref+i]*x[p+i];if(c>bc){bc=c;best=p;}}}}
+    for(let i=0;i<N;i++){const xi=best+i;if(xi>=x.length)break;y[o+i]+=x[xi]*win[i];w[o+i]+=win[i];}
+    prev=best;}
+  for(let i=0;i<outLen;i++)if(w[i]>1e-3)y[i]/=w[i];
+  return y.subarray(0,outLen);}
+/* Pitch/tempo: WSOLA stretch, anti-alias filter, cubic Hermite resampling. */
+function pitchTempo(x,sr,semis,tempo){
+  const r=Math.pow(2,semis/12),alpha=r/tempo;
+  let y=Math.abs(alpha-1)<1e-3?x:wsola(x,alpha,sr);
+  if(Math.abs(r-1)<1e-4)return Float32Array.from(y);
+  y=Float32Array.from(y);
+  if(r>1){const fc=0.46*sr/r;filt(y,bq('lowpass',fc,0.5412,sr));filt(y,bq('lowpass',fc,1.3066,sr));}
+  const n=Math.max(1,Math.floor((y.length-2)/r)),out=new Float32Array(n);
+  for(let i=0;i<n;i++){const p=i*r,j=p|0,f=p-j,y0=y[j>0?j-1:0],y1=y[j],y2=y[j+1]||0,y3=y[j+2]||0;
+    const c1=.5*(y2-y0),c2=y0-2.5*y1+2*y2-.5*y3,c3=.5*(y3-y0)+1.5*(y1-y2);out[i]=((c3*f+c2)*f+c1)*f+y1;}
+  return out;}
+/* Formant warp: estimates the spectral envelope by cepstral smoothing and moves it by `ratio`.
+   After a pitch shift by r, ratio=r restores the original formants, which keeps the voice natural and intelligible. */
+function formantWarp(x,sr,ratio){
+  if(Math.abs(ratio-1)<0.004)return x;
+  const N=2048,H=512,K=N/2+1,Lq=Math.max(20,Math.round(sr*0.0011));
+  const cr=new Float64Array(N),ci=new Float64Array(N),env=new Float64Array(K);
+  return stft(x,N,H,(re,im)=>{
+    for(let k=0;k<N;k++){cr[k]=Math.log(Math.hypot(re[k],im[k])+1e-7);ci[k]=0;}
+    fft(cr,ci,true);
+    for(let q=Lq+1;q<N-Lq;q++){cr[q]=0;ci[q]=0;}cr[Lq]*=.5;cr[N-Lq]*=.5;
+    fft(cr,ci,false);for(let k=0;k<K;k++)env[k]=cr[k];
+    for(let k=1;k<K;k++){const src=k*ratio;let lv;
+      if(src>=K-1)lv=env[K-1];else{const j=src|0,f=src-j;lv=env[j]*(1-f)+env[j+1]*f;}
+      const g=Math.min(6,Math.max(0.06,Math.exp(lv-env[k])));re[k]*=g;im[k]*=g;}});}
+function shiftVoice(x,sr,semis,tempo,preserve,fscale){
+  const r=Math.pow(2,semis/12);
+  const y=(Math.abs(semis)>1e-3||Math.abs(tempo-1)>1e-3)?pitchTempo(x,sr,semis,tempo):x;
+  const phi=(preserve?1:r)*fscale;return formantWarp(y,sr,r/phi);}
+
+/* Spectral noise reduction: noise profile from the quietest 10% of frames, Wiener gain with
+   decision-directed SNR (Ephraim-Malah) and frequency smoothing to avoid "musical noise". */
+function denoise(ch,sr,redDb,sens){
+  const N=1024,H=256,K=N/2+1,m=mono(ch),L=m.length,win=hann(N);
+  const cs=new Float64Array(L+1);for(let i=0;i<L;i++)cs[i+1]=cs[i]+m[i]*m[i];
+  const st=[];for(let s=0;s+N<=L;s+=H)if(cs[s+N]-cs[s]>1e-12)st.push(s);
+  if(st.length<4)return ch;
+  st.sort((a,b)=>(cs[a+N]-cs[a])-(cs[b+N]-cs[b]));
+  const q=Math.max(3,Math.floor(st.length*0.1)),noise=new Float64Array(K),re=new Float64Array(N),im=new Float64Array(N);
+  for(let j=0;j<q;j++){const s=st[j];for(let i=0;i<N;i++){re[i]=m[s+i]*win[i];im[i]=0;}fft(re,im,false);for(let k=0;k<K;k++)noise[k]+=(re[k]*re[k]+im[k]*im[k])/q;}
+  const floor=dB(-redDb),beta=0.6+sens/100*2.4;
+  for(let k=0;k<K;k++)noise[k]=Math.max(noise[k]*beta,1e-14);
+  return ch.map(x=>{const Gp=new Float64Array(K).fill(1),Pp=new Float64Array(K),g=new Float64Array(K);
+    return stft(x,N,H,(re,im)=>{
+      for(let k=0;k<K;k++){const P=re[k]*re[k]+im[k]*im[k],post=P/noise[k],prio=0.98*Gp[k]*Gp[k]*Pp[k]/noise[k]+0.02*Math.max(post-1,0);g[k]=prio/(1+prio);Pp[k]=P;}
+      for(let k=0;k<K;k++){let G=(k>0&&k<K-1)?0.25*g[k-1]+0.5*g[k]+0.25*g[k+1]:g[k];G=Math.max(floor,G);Gp[k]=G;re[k]*=G;im[k]*=G;}});});}
+function goertzel(x,f,sr,n){const w=2*Math.PI*f/sr,c=2*Math.cos(w);let s1=0,s2=0;for(let i=0;i<n;i++){const s=x[i]+c*s1-s2;s2=s1;s1=s;}return s1*s1+s2*s2-c*s1*s2;}
+function detectMains(m,sr){const n=Math.min(m.length,sr*10);let a=0,b=0;for(let h=1;h<=3;h++){a+=goertzel(m,50*h,sr,n);b+=goertzel(m,60*h,sr,n);}return a>=b?50:60;}
+function dehum(ch,sr,mains,harm){const f0=mains||detectMains(mono(ch),sr);
+  for(const x of ch)for(let h=1;h<=harm;h++){const f=f0*h;if(f<sr/2)filt(x,bq('notch',f,18+h*4,sr));}return f0;}
+function gate(ch,sr,thrDb){
+  const n=ch[0].length,thr=dB(thrDb),aA=Math.exp(-1/(sr*.002)),aR=Math.exp(-1/(sr*.08)),gA=Math.exp(-1/(sr*.004)),gR=Math.exp(-1/(sr*.08)),holdN=sr*.08,fl=dB(-40);
+  let env=0,g=0,hold=0;
+  for(let i=0;i<n;i++){let v=0;for(const c of ch){const a=Math.abs(c[i]);if(a>v)v=a;}
+    env=v>env?aA*env+(1-aA)*v:aR*env+(1-aR)*v;if(env>thr)hold=holdN;else if(hold>0)hold--;
+    const t=hold>0?1:fl;g=t>g?gA*g+(1-gA)*t:gR*g+(1-gR)*t;for(const c of ch)c[i]*=g;}}
+function deess(ch,sr,f,thrDb,maxRed){
+  const c=bq('highpass',f,0.707,sr),hp=filt(Float32Array.from(mono(ch)),c),n=hp.length,g=new Float32Array(n);
+  const aA=Math.exp(-1/(sr*.0015)),aR=Math.exp(-1/(sr*.06)),sm=Math.exp(-1/(sr*.002));let e=0,gs=1;
+  for(let i=0;i<n;i++){const a=Math.abs(hp[i]);e=a>e?aA*e+(1-aA)*a:aR*e+(1-aR)*a;const ed=20*Math.log10(e+1e-9);
+    const red=ed>thrDb?Math.min(maxRed,(ed-thrDb)*0.75):0,t=dB(-red);gs=sm*gs+(1-sm)*t;g[i]=gs;}
+  for(const x of ch){const h=filt(Float32Array.from(x),c);for(let i=0;i<n;i++)x[i]-=h[i]*(1-g[i]);}}
+/* Speech leveler: rides gain toward a target speech level, smoothed forward and backward (look-ahead, no pumping). */
+function leveler(ch,sr,amt,maxBoost){
+  const m=mono(ch),n=m.length,a=Math.exp(-1/(sr*.3)),tgt=dB(-20),gt=dB(-48),lo=dB(-10),hi=dB(maxBoost),g=new Float32Array(n);
+  let e=0,last=1;for(let i=0;i<n;i++){e=a*e+(1-a)*m[i]*m[i];const r=Math.sqrt(e);if(r>gt)last=Math.min(hi,Math.max(lo,tgt/r));g[i]=last;}
+  const s=Math.exp(-1/(sr*.15));let v=g[0];for(let i=0;i<n;i++){v=s*v+(1-s)*g[i];g[i]=v;}for(let i=n-1;i>=0;i--){v=s*v+(1-s)*g[i];g[i]=v;}
+  for(const x of ch)for(let i=0;i<n;i++)x[i]*=Math.pow(g[i],amt);}
+/* Robot voice: phase vocoder with zeroed phases, re-synthesised at a fixed hop, so every frame becomes a pulse at the carrier pitch. */
+function robotize(x,sr,f0){
+  const N=1024,H=Math.max(48,Math.round(sr/f0)),win=hann(N),L=x.length,out=new Float32Array(L),ws=new Float32Array(L),re=new Float64Array(N),im=new Float64Array(N);
+  for(let s=-N+H;s<L;s+=H){for(let i=0;i<N;i++){const j=s+i;re[i]=(j>=0&&j<L)?x[j]*win[i]:0;im[i]=0;}
+    fft(re,im,false);for(let k=0;k<N;k++){re[k]=Math.hypot(re[k],im[k]);im[k]=0;}fft(re,im,true);
+    for(let i=0;i<N;i++){const j=s+i;if(j>=0&&j<L){out[j]+=re[(i+N/2)%N]*win[i];ws[j]+=win[i]*win[i];}}}
+  for(let i=0;i<L;i++)out[i]=ws[i]>1e-6?out[i]/ws[i]:0;return out;}
+function whisper(x,sr){const N=512,lowK=Math.round(300*N/sr);
+  return stft(x,N,128,(re,im)=>{for(let k=0;k<=N/2;k++){let m=Math.hypot(re[k],im[k]);if(k<lowK)m*=0.25;const p=Math.random()*2*Math.PI;re[k]=m*Math.cos(p);im[k]=m*Math.sin(p);}});}
+const INTERVALS={'Octave down':[-12],'Octave up':[12],'Fifth up':[7],'Fourth down':[-5],'Major chord':[4,7],'Octaves ±':[-12,12],'Choir':[-12,-5,7]};
+function harmonize(x,sr,name,mix){const iv=INTERVALS[name]||[-12],acc=new Float32Array(x.length);
+  for(const s of iv){const v=shiftVoice(x,sr,s,1,true,1);const n=Math.min(v.length,acc.length);for(let i=0;i<n;i++)acc[i]+=v[i]/Math.sqrt(iv.length);}
+  const out=new Float32Array(x.length);for(let i=0;i<x.length;i++)out[i]=x[i]*(1-mix*0.4)+acc[i]*mix;return out;}
+function ring(ch,sr,f,m){const inc=2*Math.PI*f/sr;for(const c of ch){let ph=0;for(let i=0;i<c.length;i++){c[i]=c[i]*(1-m)+c[i]*Math.sin(ph)*m;ph+=inc;}}}
+function crush(ch,bits,ds,m){const st=2/Math.pow(2,bits);for(const c of ch){let h=0;for(let i=0;i<c.length;i++){if(i%ds===0)h=Math.round(c[i]/st)*st;c[i]=c[i]*(1-m)+h*m;}}}
+
+function repair(ch,sr,P){
+  if(P.hum)dehum(ch,sr,P.hum.mains==='Auto'?0:parseInt(P.hum.mains,10),P.hum.harm);
+  if(P.nr)ch=denoise(ch,sr,P.nr.red,P.nr.sens);
+  if(P.deess)deess(ch,sr,P.deess.freq,P.deess.thr,P.deess.max);
+  if(P.level)leveler(ch,sr,P.level.amount/100,P.level.boost);
+  return ch;}
+function voice(ch,sr,P){
+  if(P.pitch){const p=P.pitch;ch=ch.map(x=>shiftVoice(x,sr,p.semitones+p.cents/100,p.tempo/100,p.preserve,p.formant/100));}
+  if(P.robotv){const r=P.robotv;ch=ch.map(x=>{const y=robotize(x,sr,r.f0);for(let i=0;i<x.length;i++)y[i]=x[i]*(1-r.mix/100)+y[i]*r.mix/100;return y;});}
+  if(P.whisper){const w=P.whisper.mix/100;ch=ch.map(x=>{const y=whisper(x,sr);for(let i=0;i<x.length;i++)y[i]=x[i]*(1-w)+y[i]*w;return y;});}
+  if(P.harm)ch=ch.map(x=>harmonize(x,sr,P.harm.interval,P.harm.mix/100));
+  if(P.robot)ring(ch,sr,P.robot.freq,P.robot.mix/100);
+  if(P.crush)crush(ch,P.crush.bits,P.crush.ds,P.crush.mix/100);
+  return ch;}
+/* Spectrogram: log-frequency columns, 60 Hz to 16 kHz, in dBFS mapped to 0-255. */
+function spectro(ch,sr,W,B){
+  const m=mono(ch),N=1024,win=hann(N),out=new Uint8Array(W*B),re=new Float64Array(N),im=new Float64Array(N),fmax=Math.min(16000,sr/2),ks=[];
+  for(let b=0;b<=B;b++)ks.push(Math.max(1,Math.round(60*Math.pow(fmax/60,b/B)*N/sr)));
+  const ref=N*N/16;
+  for(let x=0;x<W;x++){const c=Math.floor((x+.5)/W*m.length)-N/2;
+    for(let i=0;i<N;i++){const j=c+i;re[i]=(j>=0&&j<m.length)?m[j]*win[i]:0;im[i]=0;}fft(re,im,false);
+    for(let b=0;b<B;b++){let p=0;for(let k=ks[b];k<=Math.max(ks[b],ks[b+1]-1);k++){const v=re[k]*re[k]+im[k]*im[k];if(v>p)p=v;}
+      const d=10*Math.log10(p/ref+1e-12);out[(B-1-b)*W+x]=Math.max(0,Math.min(255,(d+100)/90*255));}}
+  return out;}
+return {repair,voice,spectro,mono,filt,bq,gate};
+}
+
 (()=>{
 "use strict";
 const $=id=>document.getElementById(id);
-const dB=v=>Math.pow(10,v/20);
-const pct=v=>(v*100).toFixed(0)+'%';
+const dB=v=>Math.pow(10,v/20),toDb=v=>20*Math.log10(v+1e-12);
+const SR=48000;
+const local=DSP();
 
 /* ---------- Module definitions ---------- */
 const hz=v=>v>=1000?(v/1000).toFixed(v>=10000?1:2).replace(/\.?0+$/,'')+' kHz':Math.round(v)+' Hz';
-const sgn=(v,u)=>(v>0?'+':v<0?'−':'')+Math.abs(v)+' '+u;
+const sgn=(v,u)=>(v>0?'+':v<0?'−':'')+Math.abs(v)+(u?' '+u:'');
+const P_=v=>v+'%';
+const GROUPS=[
+ ['repair','Repair','Noise, hum, harsh S sounds and uneven volume. Processed first.'],
+ ['voice','Voice','Pitch, formants and voice-changing effects.'],
+ ['tone','Tone & dynamics','EQ, clarity, compression and saturation.'],
+ ['mod','Modulation','Movement and width.'],
+ ['space','Space','Echo and reverb, kept out of the way of the words.'],
+ ['out','Output','Loudness, limiting and fades.']];
 const MODULES=[
- {id:'pitch',name:'Pitch & Speed',desc:'Pitch shifts without changing speed; speed changes without changing pitch.',ctl:[
-  {k:'semitones',l:'Pitch',min:-12,max:12,step:.5,d:0,f:v=>sgn(v,'st')},
-  {k:'tempo',l:'Speed',min:50,max:200,step:1,d:100,f:v=>v+'%'}]},
- {id:'clean',name:'Cleanup',desc:'Silences background hiss between words and cuts low rumble.',ctl:[
-  {k:'gate',l:'Noise gate threshold',min:-80,max:-20,step:1,d:-52,f:v=>sgn(v,'dB')},
-  {k:'hpf',l:'Low cut',min:20,max:1000,step:5,d:80,f:hz}]},
- {id:'eq',name:'Equalizer',ctl:[
+ {id:'ai',g:'repair',name:'AI Voice Isolation',desc:'Neural noise suppression (RNNoise) that removes traffic, fans, keyboard and room noise.',badge:true,ctl:[
+  {k:'amount',l:'Strength',min:0,max:100,step:1,d:90,f:P_}]},
+ {id:'nr',g:'repair',name:'Noise Reduction',desc:'Learns the background noise from the quietest moments and removes it.',ctl:[
+  {k:'red',l:'Reduction',min:0,max:36,step:1,d:14,f:v=>v+' dB'},
+  {k:'sens',l:'Sensitivity',min:0,max:100,step:1,d:45,f:P_}]},
+ {id:'hum',g:'repair',name:'De-hum',desc:'Notches out electrical hum and its harmonics.',ctl:[
+  {k:'mains',l:'Hum frequency',type:'select',opts:['Auto','50 Hz','60 Hz'],d:'Auto'},
+  {k:'harm',l:'Harmonics',min:1,max:10,step:1,d:5,f:v=>v+'×'}]},
+ {id:'clean',g:'repair',name:'Noise Gate',desc:'Turns down what is left between phrases. Runs after the compressor so it catches any noise the compressor lifts.',ctl:[
+  {k:'gate',l:'Threshold',min:-80,max:-20,step:1,d:-55,f:v=>sgn(v,'dB')}]},
+ {id:'deess',g:'repair',name:'De-esser',desc:'Softens sharp S and SH sounds.',ctl:[
+  {k:'freq',l:'Frequency',min:3000,max:10000,step:100,d:5500,f:hz},
+  {k:'thr',l:'Threshold',min:-60,max:0,step:1,d:-32,f:v=>sgn(v,'dB')},
+  {k:'max',l:'Max reduction',min:0,max:20,step:1,d:9,f:v=>v+' dB'}]},
+ {id:'level',g:'repair',name:'Leveler',desc:'Evens out quiet and loud passages, like a sound engineer riding the fader.',ctl:[
+  {k:'amount',l:'Amount',min:0,max:100,step:1,d:70,f:P_},
+  {k:'boost',l:'Max boost',min:0,max:18,step:1,d:10,f:v=>'+'+v+' dB'}]},
+
+ {id:'pitch',g:'voice',name:'Pitch & Formant',desc:'Formant preservation keeps the voice natural when you change pitch.',ctl:[
+  {k:'semitones',l:'Pitch',min:-12,max:12,step:1,d:0,f:v=>sgn(v,'st')},
+  {k:'cents',l:'Fine tune',min:-100,max:100,step:1,d:0,f:v=>sgn(v,'cents')},
+  {k:'formant',l:'Formant (voice size)',min:70,max:140,step:1,d:100,f:v=>v+'%'},
+  {k:'tempo',l:'Speed',min:50,max:200,step:1,d:100,f:P_},
+  {k:'preserve',l:'Preserve formants',type:'switch',d:true}]},
+ {id:'robotv',g:'voice',name:'Robot Voice',desc:'Vocoder robot with a steady machine pitch.',ctl:[
+  {k:'f0',l:'Robot pitch',min:50,max:400,step:1,d:110,f:hz},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:100,f:P_}]},
+ {id:'whisper',g:'voice',name:'Whisper',desc:'Replaces the voiced tone with breath.',ctl:[
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:100,f:P_}]},
+ {id:'harm',g:'voice',name:'Harmonizer',desc:'Adds pitched copies of your voice.',ctl:[
+  {k:'interval',l:'Voices',type:'select',opts:['Octave down','Octave up','Fifth up','Fourth down','Major chord','Octaves ±','Choir'],d:'Octave down'},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:50,f:P_}]},
+ {id:'robot',g:'voice',name:'Ring Modulator',desc:'Metallic sci-fi tone.',ctl:[
+  {k:'freq',l:'Carrier',min:10,max:1000,step:1,d:60,f:hz},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:80,f:P_}]},
+ {id:'crush',g:'voice',name:'Bitcrusher',desc:'Lo-fi digital grit.',ctl:[
+  {k:'bits',l:'Bit depth',min:2,max:16,step:1,d:8,f:v=>v+' bit'},
+  {k:'ds',l:'Sample-rate reduction',min:1,max:32,step:1,d:4,f:v=>'÷'+v},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:100,f:P_}]},
+
+ {id:'hpf',g:'tone',name:'Low Cut',desc:'Removes rumble, wind and handling noise.',ctl:[
+  {k:'freq',l:'Cutoff',min:20,max:1000,step:5,d:80,f:hz}]},
+ {id:'eq',g:'tone',name:'Equalizer',ctl:[
   {k:'low',l:'Bass · 120 Hz',min:-12,max:12,step:.5,d:0,f:v=>sgn(v,'dB')},
   {k:'mid',l:'Mid',min:-12,max:12,step:.5,d:0,f:v=>sgn(v,'dB')},
   {k:'midf',l:'Mid frequency',min:200,max:6000,step:10,d:1500,f:hz},
   {k:'high',l:'Treble · 8 kHz',min:-12,max:12,step:.5,d:0,f:v=>sgn(v,'dB')},
   {k:'lpf',l:'High cut',min:500,max:20000,step:50,d:20000,f:v=>v>=20000?'Off':hz(v)}]},
- {id:'dyn',name:'Compressor',desc:'Evens out loud and quiet words.',ctl:[
+ {id:'clar',g:'tone',name:'Clarity',desc:'Cuts boxiness and adds presence and air so words cut through.',ctl:[
+  {k:'mud',l:'Reduce mud · 300 Hz',min:0,max:12,step:.5,d:3,f:v=>'−'+v+' dB'},
+  {k:'pres',l:'Presence · 3.2 kHz',min:0,max:12,step:.5,d:3,f:v=>'+'+v+' dB'},
+  {k:'air',l:'Air · 12 kHz',min:0,max:12,step:.5,d:2.5,f:v=>'+'+v+' dB'},
+  {k:'exc',l:'Exciter',min:0,max:100,step:1,d:20,f:P_}]},
+ {id:'dyn',g:'tone',name:'Compressor',desc:'Evens out loud and quiet words.',ctl:[
   {k:'thr',l:'Threshold',min:-60,max:0,step:1,d:-24,f:v=>sgn(v,'dB')},
-  {k:'ratio',l:'Ratio',min:1,max:20,step:.5,d:4,f:v=>v+':1'},
-  {k:'att',l:'Attack',min:1,max:100,step:1,d:5,f:v=>v+' ms'},
+  {k:'ratio',l:'Ratio',min:1,max:20,step:.5,d:3,f:v=>v+':1'},
+  {k:'att',l:'Attack',min:1,max:100,step:1,d:8,f:v=>v+' ms'},
   {k:'rel',l:'Release',min:20,max:1000,step:10,d:150,f:v=>v+' ms'},
-  {k:'makeup',l:'Makeup gain',min:0,max:24,step:.5,d:6,f:v=>sgn(v,'dB')}]},
- {id:'drive',name:'Distortion',ctl:[
-  {k:'amount',l:'Drive',min:0,max:100,step:1,d:30,f:v=>v+'%'},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:60,f:v=>v+'%'}]},
- {id:'crush',name:'Bitcrusher',desc:'Lo-fi digital grit.',ctl:[
-  {k:'bits',l:'Bit depth',min:2,max:16,step:1,d:8,f:v=>v+' bit'},
-  {k:'ds',l:'Sample-rate reduction',min:1,max:32,step:1,d:4,f:v=>'÷'+v},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:100,f:v=>v+'%'}]},
- {id:'robot',name:'Ring Modulator',desc:'The robot and sci-fi voice.',ctl:[
-  {k:'freq',l:'Carrier',min:10,max:1000,step:1,d:60,f:hz},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:80,f:v=>v+'%'}]},
- {id:'chorus',name:'Chorus',desc:'Doubles the voice into a wide ensemble.',ctl:[
+  {k:'makeup',l:'Makeup gain',min:0,max:24,step:.5,d:4,f:v=>sgn(v,'dB')}]},
+ {id:'drive',g:'tone',name:'Distortion',ctl:[
+  {k:'amount',l:'Drive',min:0,max:100,step:1,d:30,f:P_},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:60,f:P_}]},
+
+ {id:'chorus',g:'mod',name:'Chorus',desc:'Doubles the voice into a wide ensemble.',ctl:[
   {k:'rate',l:'Rate',min:.1,max:5,step:.05,d:1.2,f:v=>v.toFixed(2)+' Hz'},
   {k:'depth',l:'Depth',min:0,max:10,step:.1,d:3,f:v=>v.toFixed(1)+' ms'},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:45,f:v=>v+'%'}]},
- {id:'flanger',name:'Flanger',desc:'Jet-plane sweep.',ctl:[
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:45,f:P_}]},
+ {id:'flanger',g:'mod',name:'Flanger',desc:'Jet-plane sweep.',ctl:[
   {k:'rate',l:'Rate',min:.05,max:3,step:.05,d:.25,f:v=>v.toFixed(2)+' Hz'},
   {k:'depth',l:'Depth',min:0,max:5,step:.1,d:2,f:v=>v.toFixed(1)+' ms'},
-  {k:'fb',l:'Feedback',min:0,max:90,step:1,d:60,f:v=>v+'%'},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:50,f:v=>v+'%'}]},
- {id:'trem',name:'Tremolo',ctl:[
+  {k:'fb',l:'Feedback',min:0,max:90,step:1,d:60,f:P_},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:50,f:P_}]},
+ {id:'phaser',g:'mod',name:'Phaser',desc:'Swirling notches that sweep through the voice.',ctl:[
+  {k:'rate',l:'Rate',min:.05,max:4,step:.05,d:.4,f:v=>v.toFixed(2)+' Hz'},
+  {k:'depth',l:'Depth',min:0,max:100,step:1,d:70,f:P_},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:50,f:P_}]},
+ {id:'trem',g:'mod',name:'Tremolo',ctl:[
   {k:'rate',l:'Rate',min:.5,max:20,step:.1,d:6,f:v=>v.toFixed(1)+' Hz'},
-  {k:'depth',l:'Depth',min:0,max:100,step:1,d:60,f:v=>v+'%'}]},
- {id:'vib',name:'Vibrato',desc:'Wobbles the pitch.',ctl:[
+  {k:'depth',l:'Depth',min:0,max:100,step:1,d:60,f:P_}]},
+ {id:'vib',g:'mod',name:'Vibrato',desc:'Wobbles the pitch.',ctl:[
   {k:'rate',l:'Rate',min:.2,max:12,step:.1,d:5,f:v=>v.toFixed(1)+' Hz'},
   {k:'depth',l:'Depth',min:0,max:4,step:.05,d:1,f:v=>v.toFixed(2)+' ms'}]},
- {id:'echo',name:'Echo',ctl:[
+ {id:'apan',g:'mod',name:'Auto-pan',desc:'Moves the voice between left and right. Best on headphones.',ctl:[
+  {k:'rate',l:'Rate',min:.05,max:5,step:.05,d:.3,f:v=>v.toFixed(2)+' Hz'},
+  {k:'depth',l:'Width',min:0,max:100,step:1,d:70,f:P_}]},
+
+ {id:'echo',g:'space',name:'Echo',ctl:[
   {k:'time',l:'Delay time',min:20,max:1500,step:5,d:320,f:v=>v+' ms'},
-  {k:'fb',l:'Feedback',min:0,max:90,step:1,d:35,f:v=>v+'%'},
+  {k:'fb',l:'Feedback',min:0,max:90,step:1,d:35,f:P_},
   {k:'tone',l:'Repeat tone',min:800,max:16000,step:100,d:4500,f:hz},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:30,f:v=>v+'%'}]},
- {id:'verb',name:'Reverb',ctl:[
-  {k:'type',l:'Space',type:'select',opts:['Room','Plate','Hall','Cathedral'],d:'Hall'},
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:30,f:P_},
+  {k:'duck',l:'Keep words clear',min:0,max:100,step:1,d:60,f:P_}]},
+ {id:'verb',g:'space',name:'Reverb',ctl:[
+  {k:'type',l:'Space',type:'select',opts:['Room','Studio booth','Plate','Hall','Cathedral'],d:'Hall'},
   {k:'decay',l:'Decay',min:.2,max:8,step:.1,d:2,f:v=>v.toFixed(1)+' s'},
   {k:'pre',l:'Pre-delay',min:0,max:200,step:1,d:20,f:v=>v+' ms'},
-  {k:'mix',l:'Mix',min:0,max:100,step:1,d:25,f:v=>v+'%'}]},
- {id:'out',name:'Output',always:true,ctl:[
+  {k:'mix',l:'Mix',min:0,max:100,step:1,d:25,f:P_},
+  {k:'duck',l:'Keep words clear',min:0,max:100,step:1,d:40,f:P_}]},
+
+ {id:'out',g:'out',name:'Output',always:true,ctl:[
+  {k:'loud',l:'Loudness',type:'select',opts:['Voice note · −16 LUFS','Streaming · −14 LUFS','Broadcast · −23 LUFS','Peak −1 dBFS','Off'],d:'Voice note · −16 LUFS'},
   {k:'gain',l:'Volume',min:-24,max:12,step:.5,d:0,f:v=>sgn(v,'dB')},
   {k:'pan',l:'Pan',min:-100,max:100,step:1,d:0,f:v=>v==0?'Center':(v<0?'L ':'R ')+Math.abs(v)},
   {k:'fin',l:'Fade in',min:0,max:3000,step:10,d:0,f:v=>v+' ms'},
   {k:'fout',l:'Fade out',min:0,max:3000,step:10,d:0,f:v=>v+' ms'},
-  {k:'norm',l:'Normalize to −1 dBFS',type:'switch',d:true},
+  {k:'limit',l:'Limiter (no clipping)',type:'switch',d:true},
   {k:'rev',l:'Reverse clip',type:'switch',d:false}]}
 ];
 const MOD=Object.fromEntries(MODULES.map(m=>[m.id,m]));
-let S={};
-function defaults(){const s={};for(const m of MODULES){s[m.id]={on:!!m.always};for(const c of m.ctl)s[m.id][c.k]=c.d;}return s;}
-S=defaults();
+const REPAIR=MODULES.filter(m=>m.g==='repair').map(m=>m.id);
+const VOICE=['pitch','robotv','whisper','harm','robot','crush'];
+function defaults(ids){const s={};for(const m of MODULES){if(ids&&!ids.includes(m.id))continue;s[m.id]={on:!!m.always};for(const c of m.ctl)s[m.id][c.k]=c.d;}return s;}
+let S=defaults();
 
 /* ---------- Presets ---------- */
 const PRESETS={
- Voice:{
-  'Chipmunk':{pitch:{semitones:12,tempo:112}},
-  'Helium':{pitch:{semitones:7}},
+ 'Repair':{
+  'Studio enhance':{ai:{amount:85},nr:{red:12,sens:40},hum:{},clean:{gate:-52},deess:{},level:{amount:60},hpf:{freq:80},clar:{},dyn:{thr:-22,ratio:2.5,makeup:3}},
+  'Isolate voice':{ai:{amount:100},nr:{red:20,sens:55},clean:{gate:-52},hpf:{freq:100}},
+  'Remove hiss':{nr:{red:16,sens:50}},
+  'Remove hum':{hum:{harm:8}},
+  'Soften S sounds':{deess:{thr:-36,max:10}},
+  'Even out volume':{level:{amount:85,boost:12},dyn:{thr:-20,ratio:3,makeup:3}}},
+ 'Voice changer':{
+  'Male → Female':{pitch:{semitones:5,formant:116},clar:{mud:2,pres:2,air:3,exc:10}},
+  'Female → Male':{pitch:{semitones:-5,formant:86},eq:{low:2}},
+  'Child':{pitch:{semitones:7,formant:124}},
+  'Giant':{pitch:{semitones:-9,formant:76},verb:{type:'Hall',decay:2.5,mix:18}},
+  'Elderly':{pitch:{semitones:-1,formant:95},vib:{rate:6.5,depth:.3},trem:{rate:6.5,depth:18}},
   'High pitch':{pitch:{semitones:4}},
   'Low pitch':{pitch:{semitones:-4}},
-  'Deep voice':{pitch:{semitones:-6},eq:{low:4}},
-  'Monster':{pitch:{semitones:-12},drive:{amount:25,mix:40},verb:{type:'Room',decay:1.2,mix:15}},
-  'Demon':{pitch:{semitones:-8},drive:{amount:50,mix:50},eq:{low:6},verb:{type:'Hall',decay:3,mix:30}},
-  'Robot':{robot:{freq:70,mix:75},crush:{bits:10,ds:2,mix:100},flanger:{rate:.1,depth:1,fb:70,mix:40}},
-  'Alien':{pitch:{semitones:4},robot:{freq:420,mix:40},vib:{rate:7,depth:1.2},echo:{time:180,fb:30,mix:25}},
+  'Chipmunk':{pitch:{semitones:12,tempo:112,preserve:false}},
+  'Helium':{pitch:{semitones:5,preserve:false}},
+  'Deep voice':{pitch:{semitones:-5,formant:90},eq:{low:4}},
+  'Monster':{pitch:{semitones:-12,preserve:false},drive:{amount:25,mix:40},verb:{type:'Room',decay:1.2,mix:15}},
+  'Demon':{pitch:{semitones:-7,preserve:false},harm:{interval:'Octave down',mix:55},drive:{amount:45,mix:45},verb:{type:'Hall',decay:3,mix:28}},
+  'Robot':{robotv:{f0:110,mix:100},clar:{mud:3,pres:4,air:0,exc:0}},
+  'Sci-fi droid':{robot:{freq:70,mix:75},crush:{bits:10,ds:2,mix:100},flanger:{rate:.1,depth:1,fb:70,mix:40}},
+  'Alien':{pitch:{semitones:4,formant:122},robot:{freq:420,mix:35},vib:{rate:7,depth:1.2},echo:{time:180,fb:30,mix:25}},
+  'Whisper':{whisper:{mix:100},clar:{mud:4,pres:3,air:5,exc:0}},
+  'Choir':{harm:{interval:'Choir',mix:60},chorus:{rate:.8,depth:4,mix:40},verb:{type:'Hall',decay:3.5,mix:30}},
   'Slow-mo':{pitch:{tempo:65}},
   'Fast-forward':{pitch:{tempo:160}}},
- Places:{
-  'Telephone':{clean:{hpf:400},eq:{lpf:3400,mid:6,midf:1500},drive:{amount:15,mix:50},dyn:{}},
-  'Old radio':{clean:{hpf:500},eq:{lpf:4000,mid:5,midf:1800},drive:{amount:30,mix:60},verb:{type:'Room',decay:.4,mix:10}},
-  'Walkie-talkie':{clean:{hpf:700},eq:{lpf:2800},drive:{amount:60,mix:80},crush:{bits:6,ds:3,mix:100},dyn:{}},
-  'Megaphone':{clean:{hpf:600},eq:{lpf:4500,mid:9,midf:2000},drive:{amount:70,mix:70},echo:{time:120,fb:20,mix:15}},
-  'Underwater':{eq:{lpf:700,low:6},vib:{rate:2,depth:2.5},chorus:{rate:.4,depth:6,mix:60},verb:{type:'Hall',decay:2,mix:35}},
+ 'Places':{
+  'Telephone':{hpf:{freq:400},eq:{lpf:3400,mid:6,midf:1500},drive:{amount:15,mix:50},dyn:{}},
+  'Old radio':{hpf:{freq:500},eq:{lpf:4000,mid:5,midf:1800},drive:{amount:30,mix:60},verb:{type:'Room',decay:.4,mix:10}},
+  'Walkie-talkie':{hpf:{freq:700},eq:{lpf:2800},drive:{amount:60,mix:80},crush:{bits:6,ds:3,mix:100},dyn:{}},
+  'Megaphone':{hpf:{freq:600},eq:{lpf:4500,mid:9,midf:2000},drive:{amount:70,mix:70},echo:{time:120,fb:20,mix:15}},
+  'Underwater':{eq:{lpf:700,low:6},vib:{rate:2,depth:2.5},chorus:{rate:.4,depth:6,mix:60},verb:{type:'Hall',decay:2,mix:35,duck:0}},
   'Cave':{echo:{time:420,fb:45,mix:35},verb:{type:'Cathedral',decay:4,mix:40},eq:{high:-4}},
   'Cathedral':{verb:{type:'Cathedral',decay:6,pre:60,mix:50}},
-  'Stadium':{clean:{hpf:150},echo:{time:650,fb:30,mix:30},verb:{type:'Hall',decay:3.5,mix:35}}},
- Studio:{
-  'Studio vocal':{clean:{gate:-55,hpf:90},eq:{low:-2,mid:2,midf:3000,high:3},dyn:{thr:-22,ratio:3,makeup:5},verb:{type:'Plate',decay:1.4,pre:20,mix:14}},
-  'Podcast':{clean:{gate:-50,hpf:100},eq:{low:2,mid:3,midf:3500,high:1},dyn:{thr:-28,ratio:5,att:3,rel:120,makeup:8}},
-  'Radio host':{clean:{hpf:70},eq:{low:4,high:-2},dyn:{thr:-20,ratio:3,makeup:5},drive:{amount:10,mix:30}},
-  'Lo-fi tape':{clean:{hpf:200},eq:{lpf:5000},crush:{bits:9,ds:3,mix:70},drive:{amount:20,mix:40},vib:{rate:.6,depth:1.5}},
-  'Dreamy':{chorus:{rate:.6,depth:5,mix:50},echo:{time:450,fb:40,tone:3000,mix:25},verb:{type:'Hall',decay:4,mix:40}}}
+  'Stadium':{hpf:{freq:150},echo:{time:650,fb:30,mix:30},verb:{type:'Hall',decay:3.5,mix:35}}},
+ 'Studio':{
+  'Studio vocal':{hpf:{freq:90},eq:{low:-1,high:1},clar:{},dyn:{thr:-22,ratio:3,makeup:4},verb:{type:'Plate',decay:1.4,pre:20,mix:14}},
+  'Podcast':{hpf:{freq:100},clar:{mud:4,pres:4,air:2,exc:15},dyn:{thr:-26,ratio:4,att:5,rel:120,makeup:5}},
+  'Radio host':{hpf:{freq:70},eq:{low:4,high:-1},clar:{mud:2,pres:3,air:1,exc:25},dyn:{thr:-20,ratio:3,makeup:4},drive:{amount:10,mix:30}},
+  'ASMR':{eq:{low:3},clar:{mud:0,pres:2,air:7,exc:0},apan:{rate:.12,depth:60}},
+  'Lo-fi tape':{hpf:{freq:200},eq:{lpf:5000},crush:{bits:9,ds:3,mix:70},drive:{amount:20,mix:40},vib:{rate:.6,depth:1.5}},
+  'Dreamy':{chorus:{rate:.6,depth:5,mix:50},phaser:{rate:.2,depth:60,mix:35},echo:{time:450,fb:40,tone:3000,mix:25},verb:{type:'Hall',decay:4,mix:40}}}
 };
 let activePreset='Natural';
-function applyPreset(name,cfg){
-  S=defaults();
+function applyPreset(name,cfg,group){
+  if(name==='Natural')S=defaults();
+  else{const keepRepair=group!=='Repair';const ids=MODULES.map(m=>m.id).filter(id=>keepRepair?!REPAIR.includes(id):REPAIR.includes(id));
+    const fresh=defaults(ids);for(const id of ids)if(id!=='out'||!keepRepair)S[id]=fresh[id];
+    if(!keepRepair){} }
   for(const [id,vals] of Object.entries(cfg||{})){S[id].on=true;Object.assign(S[id],vals);}
   activePreset=name;syncUI();schedule();
 }
 
 /* ---------- UI building ---------- */
 const bank=$('bank');
-function chip(name,cfg){const b=document.createElement('button');b.className='chip';b.textContent=name;b.dataset.p=name;b.onclick=()=>applyPreset(name,cfg);return b;}
+function chip(name,cfg,group,key){const b=document.createElement('button');b.className='chip'+(key?' key':'');b.textContent=name;b.dataset.p=name;b.onclick=()=>applyPreset(name,cfg,group);return b;}
 {
   const r0=document.createElement('div');r0.className='bank-row';
-  r0.innerHTML='<span class="lbl">Start</span>';r0.append(chip('Natural',{}));
+  r0.innerHTML='<span class="lbl">Start</span>';r0.append(chip('Natural',{},null));
   const cust=document.createElement('span');cust.className='hint';cust.id='custom';cust.textContent='Custom settings';cust.hidden=true;r0.append(cust);
+  const h=document.createElement('span');h.className='hint';h.textContent='Repair presets combine with any voice, place or studio preset.';r0.append(h);
   bank.append(r0);
-  for(const [grp,ps] of Object.entries(PRESETS)){
-    const r=document.createElement('div');r.className='bank-row';
+  for(const [grp,ps] of Object.entries(PRESETS)){const r=document.createElement('div');r.className='bank-row';
     const l=document.createElement('span');l.className='lbl';l.textContent=grp;r.append(l);
-    for(const [n,c] of Object.entries(ps))r.append(chip(n,c));
-    bank.append(r);
-  }
+    for(const [n,c] of Object.entries(ps))r.append(chip(n,c,grp,n==='Studio enhance'));bank.append(r);}
 }
-const rack=$('rack');const ctlEls={};
-for(const m of MODULES){
-  const sec=document.createElement('section');sec.className='mod';sec.id='mod-'+m.id;
-  const h=document.createElement('header');
-  const t=document.createElement('h3');t.textContent=m.name;h.append(t);
-  if(!m.always){
-    const p=document.createElement('button');p.className='pwr';p.setAttribute('role','switch');p.setAttribute('aria-label',m.name+' on/off');p.id='pwr-'+m.id;
-    p.onclick=()=>{S[m.id].on=!S[m.id].on;touched();};h.append(p);
-  }
-  sec.append(h);
-  if(m.desc){const d=document.createElement('p');d.className='desc';d.textContent=m.desc;sec.append(d);}
-  const cs=document.createElement('div');cs.className='ctls';
-  for(const c of m.ctl){
-    const id=m.id+'-'+c.k;const row=document.createElement('label');row.className='ctl';row.htmlFor=id;
-    const sp=document.createElement('span');sp.className='cl';sp.textContent=c.l;row.append(sp);
-    if(c.type==='switch'){
-      row.className='ctl sw';const b=document.createElement('button');b.className='pwr';b.id=id;b.setAttribute('role','switch');
-      b.onclick=e=>{e.preventDefault();S[m.id][c.k]=!S[m.id][c.k];touched(m.id);};row.append(b);ctlEls[id]={c,el:b};
-    }else if(c.type==='select'){
-      const s=document.createElement('select');s.id=id;for(const o of c.opts){const op=document.createElement('option');op.textContent=o;s.append(op);}
-      s.onchange=()=>{S[m.id][c.k]=s.value;touched(m.id);};row.append(s);ctlEls[id]={c,el:s};
-    }else{
-      const o=document.createElement('output');row.append(o);
-      const r=document.createElement('input');r.type='range';r.id=id;r.min=c.min;r.max=c.max;r.step=c.step;
-      r.oninput=()=>{S[m.id][c.k]=+r.value;paintRange(r,c,o);touched(m.id);};
-      r.ondblclick=()=>{S[m.id][c.k]=c.d;touched(m.id);};
-      row.append(r);ctlEls[id]={c,el:r,o};
-    }
-    cs.append(row);
-  }
-  sec.append(cs);rack.append(sec);
+const rack=$('rack'),ctlEls={};
+for(const [gid,gname,gdesc] of GROUPS){
+  const gh=document.createElement('div');gh.className='grp';gh.innerHTML='<h3></h3><span></span>';gh.firstChild.textContent=gname;gh.lastChild.textContent=gdesc;rack.append(gh);
+  for(const m of MODULES.filter(x=>x.g===gid)){
+    const sec=document.createElement('section');sec.className='mod';sec.id='mod-'+m.id;
+    const h=document.createElement('header');const t=document.createElement('h4');t.textContent=m.name;h.append(t);
+    if(!m.always){const p=document.createElement('button');p.className='pwr';p.setAttribute('role','switch');p.setAttribute('aria-label',m.name+' on/off');p.id='pwr-'+m.id;
+      p.onclick=()=>{S[m.id].on=!S[m.id].on;touched();};h.append(p);}
+    sec.append(h);
+    if(m.desc){const d=document.createElement('p');d.className='desc';d.textContent=m.desc;sec.append(d);}
+    if(m.badge){const b=document.createElement('span');b.className='badge';b.id='badge-'+m.id;b.textContent='Model loads when switched on';sec.append(b);}
+    const cs=document.createElement('div');cs.className='ctls';
+    for(const c of m.ctl){
+      const id=m.id+'-'+c.k,row=document.createElement('label');row.className='ctl';row.htmlFor=id;
+      const sp=document.createElement('span');sp.className='cl';sp.textContent=c.l;row.append(sp);
+      if(c.type==='switch'){const b=document.createElement('button');b.className='pwr';b.id=id;b.setAttribute('role','switch');
+        b.onclick=e=>{e.preventDefault();S[m.id][c.k]=!S[m.id][c.k];touched(m.id);};row.append(b);ctlEls[id]={c,el:b};}
+      else if(c.type==='select'){const s=document.createElement('select');s.id=id;for(const o of c.opts){const op=document.createElement('option');op.textContent=o;s.append(op);}
+        s.onchange=()=>{S[m.id][c.k]=s.value;touched(m.id);};row.append(s);ctlEls[id]={c,el:s};}
+      else{const o=document.createElement('output');row.append(o);const r=document.createElement('input');r.type='range';r.id=id;r.min=c.min;r.max=c.max;r.step=c.step;
+        r.oninput=()=>{S[m.id][c.k]=+r.value;paintRange(r,c,o);touched(m.id);};r.ondblclick=()=>{S[m.id][c.k]=c.d;touched(m.id);};
+        row.append(r);ctlEls[id]={c,el:r,o};}
+      cs.append(row);}
+    sec.append(cs);rack.append(sec);}
 }
 function paintRange(r,c,o){const v=+r.value;r.style.setProperty('--p',((v-c.min)/(c.max-c.min)*100)+'%');o.textContent=c.f?c.f(v):v;}
 function touched(modId){if(modId&&!MOD[modId].always)S[modId].on=true;activePreset=null;syncUI();schedule();}
 function syncUI(){
-  for(const m of MODULES){
-    const on=S[m.id].on;$('mod-'+m.id).classList.toggle('on',on&&!m.always);
+  for(const m of MODULES){const on=S[m.id].on;$('mod-'+m.id).classList.toggle('on',on&&!m.always);
     const p=$('pwr-'+m.id);if(p)p.setAttribute('aria-checked',on);
-    for(const c of m.ctl){const e=ctlEls[m.id+'-'+c.k];const v=S[m.id][c.k];
-      if(c.type==='switch')e.el.setAttribute('aria-checked',!!v);
-      else if(c.type==='select')e.el.value=v;
-      else{e.el.value=v;paintRange(e.el,c,e.o);}}
-  }
+    for(const c of m.ctl){const e=ctlEls[m.id+'-'+c.k],v=S[m.id][c.k];
+      if(c.type==='switch')e.el.setAttribute('aria-checked',!!v);else if(c.type==='select')e.el.value=v;else{e.el.value=v;paintRange(e.el,c,e.o);}}}
   bank.querySelectorAll('.chip').forEach(b=>b.setAttribute('aria-pressed',b.dataset.p===activePreset));
   $('custom').hidden=activePreset!==null;
+  if(S.ai.on)loadRNN();
 }
 
-/* ---------- Toast & status ---------- */
-let toastT;function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,4200);}
+let toastT;function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,4500);}
 function status(busy,txt){$('status').classList.toggle('busy',busy);$('statusTx').textContent=txt;}
 const fmtT=s=>{s=Math.max(0,s);const m=Math.floor(s/60);return m+':'+(s-m*60).toFixed(2).padStart(5,'0');};
 
-/* ---------- DSP: offline sample processing ---------- */
-function wsola(x,alpha,sr){
-  const N=2*Math.round(sr*0.015),Hs=N/2,Ha=Hs/alpha,tol=Math.round(sr*0.006);
-  const outLen=Math.ceil(x.length*alpha),y=new Float32Array(outLen+N),w=new Float32Array(outLen+N),win=new Float32Array(N);
-  for(let i=0;i<N;i++)win[i]=0.5-0.5*Math.cos(2*Math.PI*i/N);
-  let prev=0;
-  for(let k=0;;k++){
-    const o=k*Hs;if(o>=outLen)break;
-    const nom=Math.round(k*Ha);if(nom>=x.length)break;
-    let best=nom;
-    if(k>0){const ref=prev+Hs,lo=Math.max(0,nom-tol),hi=Math.min(x.length-N,nom+tol);
-      if(ref+N<=x.length&&hi>=lo){let bc=-Infinity;
-        for(let p=lo;p<=hi;p+=2){let c=0;for(let i=0;i<N;i+=4)c+=x[ref+i]*x[p+i];if(c>bc){bc=c;best=p;}}}}
-    for(let i=0;i<N;i++){const xi=best+i;if(xi>=x.length)break;y[o+i]+=x[xi]*win[i];w[o+i]+=win[i];}
-    prev=best;
-  }
-  for(let i=0;i<outLen;i++)if(w[i]>1e-3)y[i]/=w[i];
-  return y.subarray(0,outLen);
+/* ---------- Web Worker for heavy DSP ---------- */
+let workerURL=null,worker=null,workerOK=true,wSeq=0,wPending=null;
+try{workerURL=URL.createObjectURL(new Blob([`const api=(${DSP.toString()})();self.onmessage=e=>{const d=e.data;try{let r=api[d.op](d.ch,d.sr,d.P);r=r.map(a=>(a.byteOffset||a.byteLength!==a.buffer.byteLength)?a.slice():a);self.postMessage({id:d.id,ch:r},r.map(a=>a.buffer));}catch(err){self.postMessage({id:d.id,error:String(err&&err.message||err)});}};`],{type:'text/javascript'}));}catch(e){workerOK=false;}
+function runLocal(op,ch,P){return new Promise((res,rej)=>setTimeout(()=>{try{res(local[op](ch.map(a=>a.slice()),SR,P));}catch(e){rej(e);}},0));}
+function runDSP(op,ch,P){
+  if(!workerOK||!workerURL)return runLocal(op,ch,P);
+  return new Promise((res,rej)=>{
+    try{
+      if(wPending){worker.terminate();worker=null;wPending.res(null);wPending=null;}
+      if(!worker)worker=new Worker(workerURL);
+      const id=++wSeq;wPending={id,res};
+      worker.onmessage=e=>{if(e.data.id!==id)return;wPending=null;e.data.error?rej(new Error(e.data.error)):res(e.data.ch);};
+      worker.onerror=ev=>{if(ev.preventDefault)ev.preventDefault();workerOK=false;worker=null;wPending=null;runLocal(op,ch,P).then(res,rej);};
+      worker.postMessage({id,op,ch,sr:SR,P});
+    }catch(e){workerOK=false;worker=null;wPending=null;runLocal(op,ch,P).then(res,rej);}
+  });
 }
-function onePoleLP(x,fc,sr){const a=Math.exp(-2*Math.PI*fc/sr);let s=0;for(let i=0;i<x.length;i++){s=x[i]+(s-x[i])*a;x[i]=s;}}
-function pitchTempo(x,sr,semis,tempo){
-  const r=Math.pow(2,semis/12),alpha=r/tempo;
-  let y=Math.abs(alpha-1)<1e-3?x:wsola(x,alpha,sr);
-  if(Math.abs(r-1)<1e-4)return y;
-  if(r>1){y=Float32Array.from(y);const fc=sr*0.45/r;onePoleLP(y,fc,sr);onePoleLP(y,fc,sr);}
-  const n=Math.floor((y.length-1)/r),out=new Float32Array(n);
-  for(let i=0;i<n;i++){const p=i*r,j=p|0,f=p-j;out[i]=y[j]*(1-f)+y[j+1]*f;}
+
+/* ---------- AI voice isolation (RNNoise WASM, loaded on demand) ---------- */
+const RNN_URL='https://cdn.jsdelivr.net/npm/@jitsi/rnnoise-wasm@0.2.1/dist/rnnoise-sync.js';
+let rnnP=null,rnnState='idle';
+function setBadge(state,txt){rnnState=state;const b=$('badge-ai');b.textContent=txt;b.className='badge'+(state==='ready'?' ok':state==='fail'?' bad':'');}
+function loadRNN(){
+  if(rnnP)return rnnP;setBadge('loading','Loading model (1.9 MB)…');
+  const timeout=new Promise(r=>setTimeout(()=>r(null),20000));
+  rnnP=Promise.race([import(RNN_URL).then(m=>m.default()).then(M=>{if(!M||!M._rnnoise_create)throw new Error('bad module');return M;}),timeout])
+   .then(M=>{if(!M)throw new Error('timeout');setBadge('ready','Model ready');return M;})
+   .catch(()=>{setBadge('fail','Unavailable in this browser view. Noise Reduction below still works.');return null;});
+  return rnnP;
+}
+async function aiDenoise(ch,tok){
+  const M=await loadRNN();if(!M)return null;
+  const F=480,out=[];
+  for(const c of ch){
+    const st=M._rnnoise_create(0),ptr=M._malloc(F*4),n=c.length,y=new Float32Array(n+F*2);
+    for(let i=0,f=0;i<n+F;i+=F,f++){
+      const heap=M.HEAPF32,o=ptr>>2;for(let j=0;j<F;j++){const v=c[i+j];heap[o+j]=(v===undefined?0:v)*32768;}
+      M._rnnoise_process_frame(st,ptr,ptr);const h2=M.HEAPF32;for(let j=0;j<F;j++)y[i+j]=h2[o+j]/32768;
+      if(f%300===299){await new Promise(r=>setTimeout(r));if(tok!==renderTok){M._free(ptr);M._rnnoise_destroy(st);return 'abort';}}}
+    M._free(ptr);M._rnnoise_destroy(st);
+    const lag=findLag(c,y);out.push(y.slice(lag,lag+n));}
   return out;
 }
-function gate(ch,sr,thrDb){
-  const n=ch[0].length,thr=dB(thrDb),aA=Math.exp(-1/(sr*.002)),aR=Math.exp(-1/(sr*.08)),gA=Math.exp(-1/(sr*.004)),gR=Math.exp(-1/(sr*.06)),holdN=sr*.06;
-  let env=0,g=0,hold=0;
-  for(let i=0;i<n;i++){let v=0;for(const c of ch){const a=Math.abs(c[i]);if(a>v)v=a;}
-    env=v>env?aA*env+(1-aA)*v:aR*env+(1-aR)*v;
-    if(env>thr)hold=holdN;else if(hold>0)hold--;
-    const t=hold>0?1:0;g=t>g?gA*g+(1-gA)*t:gR*g+(1-gR)*t;
-    for(const c of ch)c[i]*=g;}
+function findLag(x,y){ // align denoised output with the input (model latency)
+  const n=x.length,W=Math.min(n,24000);let s0=0,be=-1;
+  for(let s=0;s+W<=n;s+=W/2){let e=0;for(let i=s;i<s+W;i+=8)e+=x[i]*x[i];if(e>be){be=e;s0=s;}}
+  let best=480,bc=-Infinity;for(let L=0;L<=1440;L+=2){let c=0;for(let i=s0;i<s0+W&&i+L<y.length;i+=4)c+=x[i]*y[i+L];if(c>bc){bc=c;best=L;}}
+  return best;
 }
-function ring(ch,sr,f,m){const inc=2*Math.PI*f/sr;for(const c of ch){let ph=0;for(let i=0;i<c.length;i++){c[i]=c[i]*(1-m)+c[i]*Math.sin(ph)*m;ph+=inc;}}}
-function crush(ch,bits,ds,m){const st=2/Math.pow(2,bits);for(const c of ch){let h=0;for(let i=0;i<c.length;i++){if(i%ds===0)h=Math.round(c[i]/st)*st;c[i]=c[i]*(1-m)+h*m;}}}
 
-function makeIR(ctx,type,decay){
-  const sr=ctx.sampleRate,len=Math.max(1,Math.floor(sr*decay)),ir=ctx.createBuffer(2,len,sr);
-  const P={Room:{exp:2.6,dark:7000,er:true},Plate:{exp:2.2,dark:12000,er:false},Hall:{exp:2.0,dark:5500,er:true},Cathedral:{exp:1.6,dark:3200,er:true}}[type]||{exp:2,dark:6000};
-  for(let c=0;c<2;c++){const d=ir.getChannelData(c);
-    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,P.exp*decay/2+1);
-    let s=0;const a0=Math.exp(-2*Math.PI*P.dark/sr);
-    for(let i=0;i<len;i++){const a=a0+(1-a0)*0.6*(i/len);s=d[i]+(s-d[i])*a;d[i]=s;}
-    if(P.er)for(let k=1;k<=8;k++){const idx=Math.floor(sr*(0.007*k+Math.random()*0.012));if(idx<len)d[idx]+=(c?-1:1)*0.6/k;}}
-  return ir;
-}
-function driveCurve(amount){const k=amount/100*60,n=2048,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(1+k)*x/(1+k*Math.abs(x));}return c;}
-
-/* ---------- Render pipeline ---------- */
-let srcBuf=null,outBuf=null,trim=[0,0],srcName='';
-let stage1Cache={key:null,ch:null},renderTok=0,renderTimer;
-function schedule(){clearTimeout(renderTimer);if(!srcBuf)return;status(true,'Rendering…');renderTimer=setTimeout(render,180);}
-function stage1(){
-  const sr=srcBuf.sampleRate,a=Math.floor(trim[0]*sr),b=Math.max(a+64,Math.floor(trim[1]*sr));
-  let ch=[];for(let c=0;c<Math.min(2,srcBuf.numberOfChannels);c++)ch.push(srcBuf.getChannelData(c).slice(a,b));
-  if(S.out.rev)ch.forEach(x=>x.reverse());
-  if(S.clean.on)gate(ch,sr,S.clean.gate);
-  if(S.pitch.on&&(S.pitch.semitones!==0||S.pitch.tempo!==100))ch=ch.map(x=>pitchTempo(x,sr,S.pitch.semitones,S.pitch.tempo/100));
-  if(S.robot.on)ring(ch,sr,S.robot.freq,S.robot.mix/100);
-  if(S.crush.on)crush(ch,S.crush.bits,S.crush.ds,S.crush.mix/100);
-  return ch;
-}
+/* ---------- Render pipeline (staged, cached) ---------- */
+let srcBuf=null,outBuf=null,trim=[0,0],srcName='',srcNoise=null;
+const cache={base:{},ai:{},rep:{},voice:{}};
+let renderTok=0,renderTimer;
+function schedule(){clearTimeout(renderTimer);if(!srcBuf)return;status(true,'Rendering…');renderTimer=setTimeout(render,200);}
+function pick(ids){const o={};for(const id of ids)if(S[id].on)o[id]={...S[id]};return o;}
+function baseChannels(){const a=Math.floor(trim[0]*SR),b=Math.max(a+256,Math.floor(trim[1]*SR)),ch=[];
+  for(let c=0;c<Math.min(2,srcBuf.numberOfChannels);c++)ch.push(srcBuf.getChannelData(c).slice(a,b));
+  if(S.out.rev)ch.forEach(x=>x.reverse());return ch;}
 async function render(){
   if(!srcBuf)return;const tok=++renderTok;
   try{
-    const k=JSON.stringify([trim,S.out.rev,S.clean.on&&S.clean.gate,S.pitch.on&&[S.pitch.semitones,S.pitch.tempo],S.robot.on&&[S.robot.freq,S.robot.mix],S.crush.on&&[S.crush.bits,S.crush.ds,S.crush.mix]]);
-    let ch;if(stage1Cache.key===k)ch=stage1Cache.ch;else{ch=stage1();stage1Cache={key:k,ch};}
-    const out=await stage2(ch,srcBuf.sampleRate);
+    const kB=JSON.stringify([trim,S.out.rev]);
+    if(cache.base.k!==kB){cache.base={k:kB,ch:baseChannels()};}
+    let ch=cache.base.ch,kA=kB;
+    if(S.ai.on&&rnnState!=='ready'&&rnnState!=='fail'){loadRNN().then(M=>{if(M&&S.ai.on)schedule();});}
+    if(S.ai.on&&rnnState==='ready'){
+      if(cache.ai.k!==kB){status(true,'Isolating voice…');const d=await aiDenoise(cache.base.ch,tok);if(tok!==renderTok||d==='abort')return;cache.ai={k:kB,ch:d};}
+      if(cache.ai.ch){const a=S.ai.amount/100;ch=ch.map((x,i)=>{const d=cache.ai.ch[i],o=new Float32Array(x.length);for(let j=0;j<x.length;j++)o[j]=x[j]*(1-a)+d[j]*a;return o;});kA+='|ai'+S.ai.amount;}
+    }
+    const pR=pick(REPAIR.filter(i=>i!=='ai'&&i!=='clean')),kR=kA+JSON.stringify(pR);
+    if(cache.rep.k!==kR){status(true,'Cleaning up…');const r=Object.keys(pR).length?await runDSP('repair',ch,pR):ch;if(tok!==renderTok||!r)return;cache.rep={k:kR,ch:r};}
+    const pV=pick(VOICE),kV=kR+JSON.stringify(pV);
+    if(cache.voice.k!==kV){status(true,'Shaping voice…');const r=Object.keys(pV).length?await runDSP('voice',cache.rep.ch,pV):cache.rep.ch;if(tok!==renderTok||!r)return;cache.voice={k:kV,ch:r};}
+    status(true,'Mixing…');
+    const res=await mixdown(cache.voice.ch);
     if(tok!==renderTok)return;
     const wasPlaying=playing&&!abOrig,p=pos();
-    outBuf=out;drawWave($('outCv'),outBuf,0,outBuf.duration);
-    $('outMeta').textContent=fmtT(outBuf.duration)+' · '+(outBuf.sampleRate/1000).toFixed(1)+' kHz stereo';
+    outBuf=res.buf;drawOut();
+    $('stLen').textContent=fmtT(outBuf.duration);
+    $('stLufs').textContent=isFinite(res.lufs)?res.lufs.toFixed(1)+' LUFS':'—';
+    $('stPeak').textContent=res.peak.toFixed(1)+' dBFS';
+    $('stNoise').textContent=(srcNoise!=null?srcNoise.toFixed(0)+' → ':'')+res.noise.toFixed(0)+' dBFS';
     status(false,'Ready');
     if(wasPlaying)play(Math.min(p,outBuf.duration-0.01));
     updateClock();
   }catch(e){console.error(e);if(tok===renderTok)status(false,'Render failed');toast('Could not render these settings: '+e.message);}
 }
-async function stage2(ch,sr){
+
+function makeIR(ctx,type,decay){
+  const sr=ctx.sampleRate,len=Math.max(1,Math.floor(sr*decay)),ir=ctx.createBuffer(2,len,sr);
+  const P={'Room':{exp:2.6,dark:7000,er:1},'Studio booth':{exp:3.5,dark:9000,er:1},'Plate':{exp:2.2,dark:12000,er:0},'Hall':{exp:2.0,dark:5500,er:1},'Cathedral':{exp:1.6,dark:3200,er:1}}[type]||{exp:2,dark:6000,er:1};
+  for(let c=0;c<2;c++){const d=ir.getChannelData(c);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,P.exp*decay/2+1);
+    let s=0;const a0=Math.exp(-2*Math.PI*P.dark/sr);for(let i=0;i<len;i++){const a=a0+(1-a0)*0.6*(i/len);s=d[i]+(s-d[i])*a;d[i]=s;}
+    if(P.er)for(let k=1;k<=8;k++){const idx=Math.floor(sr*(0.006*k+Math.random()*0.01));if(idx<len)d[idx]+=(c?-1:1)*0.5/k;}}
+  return ir;}
+/* Exciter curve: x - tanh(3x)/3 holds only the added harmonics, so quiet hiss is not amplified. */
+function harmonicsCurve(){const n=2048,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=x-Math.tanh(3*x)/3;}return c;}
+function driveCurve(amount){const k=amount/100*60,n=2048,c=new Float32Array(n);for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(1+k)*x/(1+k*Math.abs(x));}return c;}
+/* EBU R128 / ITU-R BS.1770 integrated loudness (K-weighting coefficients for 48 kHz). */
+const KW1=[1.53512485958697,-2.69169618940638,1.19839281085285,-1.69065929318241,0.73248077421585],KW2=[1,-2,1,-1.99004745483398,0.99007225036621];
+function lufs(chs){
+  const n=chs[0].length,blk=Math.floor(0.4*SR),stp=Math.floor(0.1*SR),cum=new Float64Array(n+1);
+  for(const c of chs){const y=local.filt(local.filt(Float32Array.from(c),KW1),KW2);let s=0;for(let i=0;i<n;i++){s+=y[i]*y[i];cum[i+1]+=s;}}
+  const bl=[];if(n<blk)bl.push(cum[n]/Math.max(1,n));else for(let s=0;s+blk<=n;s+=stp)bl.push((cum[s+blk]-cum[s])/blk);
+  const L=ms=>-0.691+10*Math.log10(ms+1e-20);
+  const a=bl.filter(v=>L(v)>-70);if(!a.length)return -Infinity;
+  const rel=L(a.reduce((x,y)=>x+y,0)/a.length)-10,b=a.filter(v=>L(v)>rel);
+  return L(b.reduce((x,y)=>x+y,0)/b.length);}
+/* Look-ahead peak limiter: min-filter of required gain over 5 ms, box-smoothed attack, 80 ms release. */
+function limiter(chs,ceilDb){
+  const n=chs[0].length,c=dB(ceilDb),la=Math.floor(SR*0.005),need=new Float32Array(n);
+  for(let i=0;i<n;i++){let p=0;for(const x of chs){const a=Math.abs(x[i]);if(a>p)p=a;}need[i]=p>c?c/p:1;}
+  const mn=new Float32Array(n),dq=new Int32Array(n);let h=0,t=0;
+  for(let i=n-1;i>=0;i--){while(t>h&&need[dq[t-1]]>=need[i])t--;dq[t++]=i;while(dq[h]>i+la)h++;mn[i]=need[dq[h]];}
+  const rel=1-Math.exp(-1/(SR*0.08));let sum=0,g=1;const box=new Float32Array(n);
+  for(let i=0;i<n;i++){sum+=mn[i];if(i>=la)sum-=mn[i-la];box[i]=sum/Math.min(i+1,la);}
+  for(let i=0;i<n;i++){const tgt=Math.min(box[i],mn[i]);g=tgt<g?tgt:g+(tgt-g)*rel;if(g>tgt)g=tgt;for(const x of chs)x[i]*=g;}}
+function noiseFloor(chs){const m=local.mono(chs),W=Math.floor(SR*0.05),v=[];for(let s=0;s+W<=m.length;s+=W){let e=0;for(let i=s;i<s+W;i++)e+=m[i]*m[i];v.push(e/W);}
+  if(!v.length)return -90;v.sort((a,b)=>a-b);return Math.max(-100,10*Math.log10(v[Math.floor(v.length*0.1)]+1e-12));}
+
+async function mixdown(ch){
   const len=ch[0].length;let tail=0.05;
   if(S.verb.on)tail=Math.max(tail,S.verb.decay+S.verb.pre/1000);
   if(S.echo.on){const fb=Math.max(.01,S.echo.fb/100);tail=Math.max(tail,Math.min(10,S.echo.time/1000*(Math.log(0.001)/Math.log(fb)+1)));}
-  const ctx=new OfflineAudioContext(2,len+Math.ceil(tail*sr),sr);
-  const buf=ctx.createBuffer(ch.length,len,sr);ch.forEach((x,i)=>buf.copyToChannel(x,i));
+  const ctx=new OfflineAudioContext(6,len+Math.ceil(tail*SR),SR);
+  ctx.destination.channelInterpretation='discrete';
+  const buf=ctx.createBuffer(ch.length,len,SR);ch.forEach((x,i)=>buf.copyToChannel(x,i));
   const src=ctx.createBufferSource();src.buffer=buf;
-  let n=src;
-  const to=m=>{n.connect(m);n=m;return m;};
   const G=v=>{const g=ctx.createGain();g.gain.value=v;return g;};
+  const ST=()=>{const g=ctx.createGain();g.channelCount=2;g.channelCountMode='explicit';g.channelInterpretation='speakers';return g;};
   const BQ=(type,f,q,g)=>{const b=ctx.createBiquadFilter();b.type=type;b.frequency.value=f;if(q!=null)b.Q.value=q;if(g!=null)b.gain.value=g;return b;};
   const LFO=(rate,amt,target,phase)=>{const o=ctx.createOscillator();o.frequency.value=rate;const g=G(amt);o.connect(g).connect(target);o.start(phase||0);return o;};
+  let n=src;const to=m=>{n.connect(m);n=m;return m;};
   const par=(mix,build)=>{const inN=n,sum=G(1),dry=G(1-mix),wet=G(mix);inN.connect(dry).connect(sum);build(inN).connect(wet).connect(sum);n=sum;};
-
-  if(S.clean.on)to(BQ('highpass',S.clean.hpf,.707));
-  if(S.eq.on){const e=S.eq;
-    if(e.low)to(BQ('lowshelf',120,null,e.low));
-    if(e.mid)to(BQ('peaking',e.midf,1,e.mid));
-    if(e.high)to(BQ('highshelf',8000,null,e.high));
-    if(e.lpf<20000)to(BQ('lowpass',e.lpf,.707));}
-  if(S.drive.on){const d=S.drive;par(d.mix/100,inN=>{const sh=ctx.createWaveShaper();sh.curve=driveCurve(d.amount);sh.oversample='4x';const pre=G(1+d.amount/40),post=G(1/(1+d.amount/80));inN.connect(pre).connect(sh).connect(post);return post;});}
+  to(ST());
+  if(S.hpf.on){to(BQ('highpass',S.hpf.freq,.707));to(BQ('highpass',S.hpf.freq,.707));}
+  if(S.eq.on){const e=S.eq;if(e.low)to(BQ('lowshelf',120,null,e.low));if(e.mid)to(BQ('peaking',e.midf,1,e.mid));if(e.high)to(BQ('highshelf',8000,null,e.high));if(e.lpf<20000)to(BQ('lowpass',e.lpf,.707));}
+  if(S.clar.on){const c=S.clar;if(c.mud)to(BQ('peaking',300,1,-c.mud));if(c.pres)to(BQ('peaking',3200,.9,c.pres));if(c.air)to(BQ('highshelf',12000,null,c.air));
+    if(c.exc){const inN=n,sum=G(1);inN.connect(sum);const hp=BQ('highpass',2800,.707),sh=ctx.createWaveShaper();sh.curve=harmonicsCurve();sh.oversample='4x';
+      inN.connect(hp).connect(G(3)).connect(sh).connect(BQ('highpass',2800,.707)).connect(G(c.exc/100*0.5)).connect(sum);n=sum;}}
+  if(S.drive.on){const d=S.drive;par(d.mix/100,inN=>{const sh=ctx.createWaveShaper();sh.curve=driveCurve(d.amount);sh.oversample='4x';const post=G(1/(1+d.amount/80));inN.connect(G(1+d.amount/40)).connect(sh).connect(post);return post;});}
   if(S.dyn.on){const d=S.dyn,c=ctx.createDynamicsCompressor();c.threshold.value=d.thr;c.ratio.value=d.ratio;c.knee.value=6;c.attack.value=d.att/1000;c.release.value=d.rel/1000;to(c);to(G(dB(d.makeup)));}
   if(S.chorus.on){const c=S.chorus;par(c.mix/100,inN=>{const out=G(.8);
     for(let v=0;v<2;v++){const d=ctx.createDelay(.1);d.delayTime.value=.018+v*.008;LFO(c.rate*(1+v*.17),c.depth/2000,d.delayTime,v*.13);
       const p=ctx.createStereoPanner();p.pan.value=v?.65:-.65;inN.connect(d).connect(p).connect(out);}return out;});}
   if(S.flanger.on){const f=S.flanger;par(f.mix/100,inN=>{const d=ctx.createDelay(.05);d.delayTime.value=.003+f.depth/2000;LFO(f.rate,f.depth/2000,d.delayTime);
     const fb=G(f.fb/100);inN.connect(d);d.connect(fb).connect(d);return d;});}
+  if(S.phaser.on){const p=S.phaser;par(p.mix/100,inN=>{let a=inN;const o=ctx.createOscillator();o.frequency.value=p.rate;
+    for(let s=0;s<6;s++){const ap=BQ('allpass',1000,.6);const g=G(p.depth/100*850);o.connect(g).connect(ap.frequency);a.connect(ap);a=ap;}o.start();return a;});}
   if(S.trem.on){const t=S.trem,g=G(1-t.depth/200);LFO(t.rate,t.depth/200,g.gain);to(g);}
   if(S.vib.on){const v=S.vib,d=ctx.createDelay(.05);d.delayTime.value=.002+v.depth/1000;LFO(v.rate,v.depth/1000,d.delayTime);to(d);}
-  if(S.out.pan){const p=ctx.createStereoPanner();p.pan.value=S.out.pan/100;to(p);}
+  if(S.out.pan||S.apan.on){const p=ctx.createStereoPanner();p.pan.value=S.out.pan/100;if(S.apan.on)LFO(S.apan.rate,S.apan.depth/100,p.pan);to(p);}
 
-  const post=n,bus=G(1),verbIn=G(1);
-  post.connect(G(S.verb.on?1-S.verb.mix/250:1)).connect(bus);
-  post.connect(verbIn);
+  // Six-channel bus: 0-1 dry, 2-3 echo, 4-5 reverb. Wet buses are ducked under the voice afterwards.
+  const merger=ctx.createChannelMerger(6);
+  const toPair=(node,idx)=>{const s=ST(),sp=ctx.createChannelSplitter(2);node.connect(s).connect(sp);sp.connect(merger,0,idx);sp.connect(merger,1,idx+1);};
+  const post=n;toPair(post.connect(G(S.verb.on?1-S.verb.mix/250:1)),0);
+  const verbIn=G(1);post.connect(verbIn);
   if(S.echo.on){const e=S.echo,d=ctx.createDelay(2);d.delayTime.value=e.time/1000;const lp=BQ('lowpass',e.tone,.5),fb=G(e.fb/100),wet=G(e.mix/100);
-    post.connect(d);d.connect(lp);lp.connect(fb).connect(d);lp.connect(wet);wet.connect(bus);wet.connect(verbIn);}
+    post.connect(BQ('highpass',180,.707)).connect(d);d.connect(lp);lp.connect(fb).connect(d);lp.connect(wet);toPair(wet,2);wet.connect(verbIn);}
   if(S.verb.on){const v=S.verb,pd=ctx.createDelay(1);pd.delayTime.value=v.pre/1000;const cv=ctx.createConvolver();cv.buffer=makeIR(ctx,v.type,v.decay);
-    verbIn.connect(pd).connect(cv).connect(G(v.mix/100*1.6)).connect(bus);}
-  bus.connect(ctx.destination);
-  src.start(0);
+    const w=G(v.mix/100*1.6);verbIn.connect(BQ('highpass',220,.707)).connect(pd).connect(cv).connect(w);toPair(w,4);}
+  merger.connect(ctx.destination);src.start(0);
   const r=await ctx.startRendering();
 
-  const L=r.getChannelData(0),R=r.getChannelData(1),th=dB(-72);
-  let end=r.length-1;while(end>len&&Math.abs(L[end])<th&&Math.abs(R[end])<th)end--;
-  end=Math.min(r.length,end+Math.floor(sr*.05));
-  const o=new AudioBuffer({length:end,numberOfChannels:2,sampleRate:sr});
-  const oL=L.slice(0,end),oR=R.slice(0,end);
-  let g=dB(S.out.gain);
-  if(S.out.norm){let pk=0;for(let i=0;i<end;i++){const a=Math.max(Math.abs(oL[i]),Math.abs(oR[i]));if(a>pk)pk=a;}if(pk>1e-5)g*=dB(-1)/pk;}
-  const fi=Math.floor(S.out.fin/1000*sr),fo=Math.floor(S.out.fout/1000*sr);
-  for(let i=0;i<end;i++){let k=g;if(i<fi)k*=Math.sin(i/fi*Math.PI/2);const j=end-1-i;if(j<fo)k*=Math.sin(j/fo*Math.PI/2);oL[i]*=k;oR[i]*=k;}
-  o.copyToChannel(oL,0);o.copyToChannel(oR,1);
-  return o;
+  const total=r.length,D=[r.getChannelData(0),r.getChannelData(1)],E=[r.getChannelData(2),r.getChannelData(3)],V=[r.getChannelData(4),r.getChannelData(5)];
+  if(S.clean.on)local.gate(D,SR,S.clean.gate); // gate the dry voice after compression, before adding echo/reverb
+  const mix=[new Float32Array(total),new Float32Array(total)];
+  const ducks=[[E,S.echo.on?S.echo.duck/100:0,S.echo.on],[V,S.verb.on?S.verb.duck/100:0,S.verb.on]];
+  // voice envelope for ducking
+  let env=null;
+  if(ducks.some(d=>d[2]&&d[1]>0)){env=new Float32Array(total);const aA=Math.exp(-1/(SR*.01)),aR=Math.exp(-1/(SR*.25));let e=0;
+    for(let i=0;i<total;i++){const v=Math.max(Math.abs(D[0][i]),Math.abs(D[1][i]));e=v>e?aA*e+(1-aA)*v:aR*e+(1-aR)*v;env[i]=e;}}
+  for(let c=0;c<2;c++)mix[c].set(D[c]);
+  for(const [W,amt,on] of ducks){if(!on)continue;const sm=Math.exp(-1/(SR*.03));let gd=0;
+    for(let i=0;i<total;i++){let g=1;if(env&&amt>0){const d=toDb(env[i]),t=amt*15*Math.min(1,Math.max(0,(d+45)/25));gd=sm*gd+(1-sm)*t;g=dB(-gd);}
+      mix[0][i]+=W[0][i]*g;mix[1][i]+=W[1][i]*g;}}
+  const th=dB(-72);let end=total-1;while(end>len&&Math.abs(mix[0][end])<th&&Math.abs(mix[1][end])<th)end--;
+  end=Math.min(total,end+Math.floor(SR*.05));
+  const o=[mix[0].slice(0,end),mix[1].slice(0,end)];
+  // Loudness
+  const mode=S.out.loud;let g=dB(S.out.gain);
+  if(mode.includes('LUFS')){const tgt=parseFloat(mode.split('·')[1].replace('−','-'));const L=lufs(o);if(isFinite(L))g*=dB(Math.min(30,tgt-L));}
+  else if(mode.startsWith('Peak')){let pk=0;for(const x of o)for(let i=0;i<end;i++){const a=Math.abs(x[i]);if(a>pk)pk=a;}if(pk>1e-5)g*=dB(-1)/pk;}
+  for(const x of o)for(let i=0;i<end;i++)x[i]*=g;
+  if(S.out.limit)limiter(o,-1);
+  const fi=Math.floor(S.out.fin/1000*SR),fo=Math.floor(S.out.fout/1000*SR);
+  if(fi||fo)for(let i=0;i<end;i++){let k=1;if(i<fi)k*=Math.sin(i/fi*Math.PI/2);const j=end-1-i;if(j<fo)k*=Math.sin(j/fo*Math.PI/2);if(k!==1){o[0][i]*=k;o[1][i]*=k;}}
+  let pk=0;for(const x of o)for(let i=0;i<end;i++){const a=Math.abs(x[i]);if(a>pk)pk=a;}
+  const out=new AudioBuffer({length:end,numberOfChannels:2,sampleRate:SR});out.copyToChannel(o[0],0);out.copyToChannel(o[1],1);
+  return {buf:out,lufs:lufs(o),peak:toDb(pk),noise:noiseFloor(o)};
 }
 
-/* ---------- Waveforms ---------- */
+/* ---------- Waveform & spectrogram ---------- */
 const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-function drawWave(cv,buf,t0,t1,dimOutside){
-  const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1,W=Math.max(1,Math.round(r.width*dpr)),H=Math.max(1,Math.round(r.height*dpr));
-  cv.width=W;cv.height=H;const g=cv.getContext('2d');g.clearRect(0,0,W,H);
-  g.fillStyle=css('--line');g.fillRect(0,H/2-dpr*.5,W,dpr);
-  if(!buf)return;
-  const sr=buf.sampleRate,a=Math.floor(t0*sr),b=Math.floor(t1*sr),span=Math.max(1,b-a),chs=[];
-  for(let c=0;c<buf.numberOfChannels;c++)chs.push(buf.getChannelData(c));
-  const col=css('--wave');g.fillStyle=col;
-  for(let x=0;x<W;x++){const s=a+Math.floor(x/W*span),e=Math.max(s+1,a+Math.floor((x+1)/W*span));let mn=0,mx=0;
-    for(const d of chs)for(let i=s;i<e;i+=Math.max(1,((e-s)/64)|0)){const v=d[i];if(v<mn)mn=v;if(v>mx)mx=v;}
+const hexRGB=h=>{h=h.replace('#','');if(h.length===3)h=h.split('').map(x=>x+x).join('');const v=parseInt(h,16);return [v>>16&255,v>>8&255,v&255];};
+let view='wave';
+function sizeCanvas(cv){const r=cv.getBoundingClientRect(),dpr=window.devicePixelRatio||1;cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));return [cv.width,cv.height,dpr];}
+function drawWave(cv,buf){
+  const [W,H,dpr]=sizeCanvas(cv),g=cv.getContext('2d');g.clearRect(0,0,W,H);
+  g.fillStyle=css('--line');g.fillRect(0,H/2-dpr*.5,W,dpr);if(!buf)return;
+  const span=buf.length,chs=[];for(let c=0;c<buf.numberOfChannels;c++)chs.push(buf.getChannelData(c));
+  g.fillStyle=css('--wave');
+  for(let x=0;x<W;x++){const s=Math.floor(x/W*span),e=Math.max(s+1,Math.floor((x+1)/W*span));let mn=0,mx=0;const st=Math.max(1,((e-s)/64)|0);
+    for(const d of chs)for(let i=s;i<e;i+=st){const v=d[i];if(v<mn)mn=v;if(v>mx)mx=v;}
     const y1=H/2-mx*H*.46,y2=H/2-mn*H*.46;g.fillRect(x,y1,1,Math.max(dpr,y2-y1));}
 }
-function redrawAll(){drawWave($('srcCv'),srcBuf,0,srcBuf?srcBuf.duration:1);drawWave($('outCv'),outBuf,0,outBuf?outBuf.duration:1);}
-new ResizeObserver(()=>redrawAll()).observe($('outWave'));
+function drawSpec(cv,buf){
+  const [W,H]=sizeCanvas(cv),g=cv.getContext('2d');g.clearRect(0,0,W,H);if(!buf)return;
+  const cols=Math.min(900,Math.round(W/2)),B=96,chs=[buf.getChannelData(0),buf.getChannelData(1)],d=local.spectro(chs,SR,cols,B);
+  const lo=hexRGB(css('--spec-lo')),hi=hexRGB(css('--spec-hi')),img=new ImageData(cols,B);
+  for(let i=0;i<d.length;i++){const t=Math.pow(d[i]/255,1.6);for(let c=0;c<3;c++)img.data[i*4+c]=lo[c]+(hi[c]-lo[c])*t;img.data[i*4+3]=255;}
+  const off=document.createElement('canvas');off.width=cols;off.height=B;off.getContext('2d').putImageData(img,0,0);
+  g.imageSmoothingEnabled=true;g.drawImage(off,0,0,W,H);
+}
+function drawOut(){(view==='spec'?drawSpec:drawWave)($('outCv'),outBuf);}
+function redrawAll(){drawWave($('srcCv'),srcBuf);drawOut();}
+let roT;new ResizeObserver(()=>{clearTimeout(roT);roT=setTimeout(redrawAll,60);}).observe($('outWave'));
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>setTimeout(redrawAll,30));
 new MutationObserver(()=>setTimeout(redrawAll,30)).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+$('vWave').onclick=()=>{view='wave';$('vWave').setAttribute('aria-pressed',true);$('vSpec').setAttribute('aria-pressed',false);drawOut();};
+$('vSpec').onclick=()=>{view='spec';$('vSpec').setAttribute('aria-pressed',true);$('vWave').setAttribute('aria-pressed',false);drawOut();};
 
 function updateSel(){
   const D=srcBuf?srcBuf.duration:1,l=trim[0]/D*100,r=trim[1]/D*100;
-  $('sel').style.left=l+'%';$('sel').style.width=(r-l)+'%';
-  $('dimL').style.left='0';$('dimL').style.width=l+'%';$('dimR').style.left=r+'%';$('dimR').style.width=(100-r)+'%';
+  $('sel').style.left=l+'%';$('sel').style.width=(r-l)+'%';$('dimL').style.left='0';$('dimL').style.width=l+'%';$('dimR').style.left=r+'%';$('dimR').style.width=(100-r)+'%';
   $('sel').hidden=$('dimL').hidden=$('dimR').hidden=!srcBuf;
   if(srcBuf)$('srcMeta').textContent=(srcName?srcName+' · ':'')+'keep '+fmtT(trim[0])+'–'+fmtT(trim[1])+' ('+(trim[1]-trim[0]).toFixed(2)+' s of '+D.toFixed(2)+' s)';
 }
-{ // trim selection drag
-  const w=$('srcWave');let drag=null;
+{ const w=$('srcWave');let drag=null;
   const tAt=e=>{const r=w.getBoundingClientRect();return Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*srcBuf.duration;};
   w.addEventListener('pointerdown',e=>{if(!srcBuf)return;w.setPointerCapture(e.pointerId);const t=tAt(e),r=w.getBoundingClientRect(),px=srcBuf.duration/r.width*12;
     if(Math.abs(t-trim[0])<px)drag={h:0};else if(Math.abs(t-trim[1])<px)drag={h:1};else{drag={h:'new',a:t};trim=[t,t];}updateSel();});
   w.addEventListener('pointermove',e=>{if(!drag)return;const t=tAt(e);
-    if(drag.h==='new')trim=[Math.min(drag.a,t),Math.max(drag.a,t)];else{trim[drag.h]=t;if(trim[0]>trim[1])trim=[trim[1],trim[0]],drag.h=1-drag.h;}updateSel();});
-  const up=()=>{if(!drag)return;drag=null;if(trim[1]-trim[0]<0.05)trim=[0,srcBuf.duration];updateSel();stopPlay(true);schedule();};
+    if(drag.h==='new')trim=[Math.min(drag.a,t),Math.max(drag.a,t)];else{trim[drag.h]=t;if(trim[0]>trim[1]){trim=[trim[1],trim[0]];drag.h=1-drag.h;}}updateSel();});
+  const up=()=>{if(!drag)return;drag=null;if(trim[1]-trim[0]<0.05)trim=[0,srcBuf.duration];updateSel();measureSrc();stopPlay();schedule();};
   w.addEventListener('pointerup',up);w.addEventListener('pointercancel',up);
-  w.addEventListener('dblclick',()=>{if(!srcBuf)return;trim=[0,srcBuf.duration];updateSel();schedule();});
+  w.addEventListener('dblclick',()=>{if(!srcBuf)return;trim=[0,srcBuf.duration];updateSel();measureSrc();schedule();});
 }
+function measureSrc(){const a=Math.floor(trim[0]*SR),b=Math.floor(trim[1]*SR),ch=[];for(let c=0;c<srcBuf.numberOfChannels;c++)ch.push(srcBuf.getChannelData(c).subarray(a,b));srcNoise=noiseFloor(ch);}
 
 /* ---------- Playback ---------- */
 let ac=null,analyser=null,node=null,playing=false,startAt=0,offset=0,abOrig=false,loop=false,peakHold=-90,peakT=0;
@@ -540,52 +839,45 @@ const curDur=()=>abOrig?(trim[1]-trim[0]):(outBuf?outBuf.duration:0);
 const pos=()=>playing?Math.min(curDur(),ac.currentTime-startAt):offset;
 function killNode(){if(node){node.onended=null;try{node.stop();}catch(e){}node.disconnect();node=null;}}
 function play(from){
-  const b=abOrig?srcBuf:outBuf;if(!b)return;ensureAC();killNode();
-  const D=curDur();if(from>=D-0.01)from=0;
-  const s=ac.createBufferSource();s.buffer=b;s.connect(analyser);
-  if(abOrig)s.start(0,trim[0]+from,D-from);else s.start(0,from);
+  const b=abOrig?srcBuf:outBuf;if(!b)return;ensureAC();killNode();const D=curDur();if(from>=D-0.01)from=0;
+  const s=ac.createBufferSource();s.buffer=b;s.connect(analyser);if(abOrig)s.start(0,trim[0]+from,D-from);else s.start(0,from);
   node=s;startAt=ac.currentTime-from;playing=true;
-  s.onended=()=>{if(node!==s)return;if(loop)play(0);else{playing=false;offset=0;node=null;uiPlay();}};
-  uiPlay();
-}
+  s.onended=()=>{if(node!==s)return;if(loop)play(0);else{playing=false;offset=0;node=null;uiPlay();}};uiPlay();}
 function pausePlay(){if(!playing)return;offset=pos();killNode();playing=false;uiPlay();}
-function stopPlay(reset){killNode();playing=false;if(reset!==false)offset=0;uiPlay();}
+function stopPlay(){killNode();playing=false;offset=0;uiPlay();}
 function uiPlay(){$('playIco').innerHTML=playing?'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>':'<path d="M8 5v14l11-7z"/>';$('play').setAttribute('aria-label',playing?'Pause':'Play');updateClock();}
 function updateClock(){const p=pos(),D=curDur();$('clock').textContent=fmtT(p)+' / '+fmtT(D);
-  const f=D?p/D:0;$('outPh').style.left=(f*100)+'%';$('outPh').hidden=abOrig;
+  $('outPh').style.left=((D?p/D:0)*100)+'%';$('outPh').hidden=abOrig;
   const sp=$('srcPh');sp.hidden=!abOrig||!srcBuf;if(srcBuf)sp.style.left=((trim[0]+p)/srcBuf.duration*100)+'%';}
 $('play').onclick=()=>{if(!srcBuf)return toast('Open a voice note or load the sample first.');playing?pausePlay():play(offset);};
 $('stop').onclick=()=>stopPlay();
 $('loop').onclick=e=>{loop=!loop;e.currentTarget.setAttribute('aria-pressed',loop);};
-$('ab').onclick=e=>{const was=playing,f=curDur()?pos()/curDur():0;abOrig=!abOrig;e.currentTarget.setAttribute('aria-pressed',abOrig);
-  offset=f*curDur();if(was)play(offset);else updateClock();};
+$('ab').onclick=e=>{const was=playing,f=curDur()?pos()/curDur():0;abOrig=!abOrig;e.currentTarget.setAttribute('aria-pressed',abOrig);offset=f*curDur();if(was)play(offset);else updateClock();};
 $('outWave').addEventListener('click',e=>{if(!outBuf||abOrig)return;const r=e.currentTarget.getBoundingClientRect();offset=(e.clientX-r.left)/r.width*outBuf.duration;if(playing)play(offset);else updateClock();});
-document.addEventListener('keydown',e=>{if(e.code==='Space'&&(e.target===document.body)){e.preventDefault();$('play').click();}});
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target===document.body){e.preventDefault();$('play').click();}});
 const mbuf=new Float32Array(2048);
 (function tick(){
-  if(playing){updateClock();analyser.getFloatTimeDomainData(mbuf);let pk=0;for(const v of mbuf){const a=Math.abs(v);if(a>pk)pk=a;}
-    const d=Math.max(-60,20*Math.log10(pk+1e-9));if(d>peakHold||performance.now()-peakT>1200){peakHold=d;peakT=performance.now();}
-    setMeter(d,peakHold);}
+  if(playing&&analyser){updateClock();analyser.getFloatTimeDomainData(mbuf);let pk=0;for(const v of mbuf){const a=Math.abs(v);if(a>pk)pk=a;}
+    const d=Math.max(-60,toDb(pk));if(d>peakHold||performance.now()-peakT>1200){peakHold=d;peakT=performance.now();}setMeter(d,peakHold);}
   else setMeter(-60,-60);
-  requestAnimationFrame(tick);
-})();
-function setMeter(d,p){const f=(d+60)/60,pf=(p+60)/60;const el=$('mFill');el.style.width=(f*100)+'%';el.style.setProperty('--mw',(f>0?100/f:100)+'%');$('mPeak').style.left='calc('+(pf*100)+'% - 2px)';$('mPeak').hidden=p<=-59;}
+  requestAnimationFrame(tick);})();
+function setMeter(d,p){const f=(d+60)/60,pf=(p+60)/60,el=$('mFill');el.style.width=(f*100)+'%';el.style.setProperty('--mw',(f>0?100/f:100)+'%');$('mPeak').style.left='calc('+(pf*100)+'% - 2px)';$('mPeak').hidden=p<=-59;}
 
-/* ---------- Loading audio ---------- */
+/* ---------- Loading audio (everything is resampled to 48 kHz) ---------- */
+async function to48k(buf){
+  if(buf.sampleRate===SR)return buf;
+  const ch=Math.min(2,buf.numberOfChannels),ctx=new OfflineAudioContext(ch,Math.ceil(buf.duration*SR),SR),s=ctx.createBufferSource();
+  s.buffer=buf;s.connect(ctx.destination);s.start();return ctx.startRendering();}
 async function setSource(buf,name){
-  stopPlay();srcBuf=buf;srcName=name;trim=[0,buf.duration];stage1Cache={key:null};outBuf=null;
-  $('srcEmpty').hidden=true;updateSel();drawWave($('srcCv'),srcBuf,0,srcBuf.duration);
-  await render();
-}
-async function decode(arr){
-  const c=new OfflineAudioContext(1,1,44100);
-  return await new Promise((res,rej)=>{const p=c.decodeAudioData(arr,res,rej);if(p&&p.then)p.then(res,rej);});
-}
+  stopPlay();status(true,'Preparing…');srcBuf=await to48k(buf);srcName=name;trim=[0,srcBuf.duration];
+  for(const k in cache)cache[k]={};outBuf=null;
+  $('srcEmpty').hidden=true;updateSel();measureSrc();drawWave($('srcCv'),srcBuf);
+  await render();}
+async function decode(arr){const c=new OfflineAudioContext(1,1,44100);return await new Promise((res,rej)=>{const p=c.decodeAudioData(arr,res,rej);if(p&&p.then)p.then(res,rej);});}
 async function loadFile(f){
   if(!f)return;status(true,'Decoding…');
   try{const buf=await decode(await f.arrayBuffer());await setSource(buf,f.name);toast('Opened '+f.name);}
-  catch(e){status(false,'Ready');toast('This browser could not decode '+f.name+'. Try converting it to .m4a, .mp3 or .wav, or open it in Chrome.');}
-}
+  catch(e){status(false,'Ready');toast('This browser could not decode '+f.name+'. Try .m4a, .mp3 or .wav, or open it in Chrome.');}}
 $('file').onchange=e=>{loadFile(e.target.files[0]);e.target.value='';};
 let dragDepth=0;
 addEventListener('dragenter',e=>{if([...e.dataTransfer.types].includes('Files')){dragDepth++;$('drop').hidden=false;}});
@@ -593,16 +885,12 @@ addEventListener('dragleave',()=>{dragDepth=Math.max(0,dragDepth-1);if(!dragDept
 addEventListener('dragover',e=>e.preventDefault());
 addEventListener('drop',e=>{e.preventDefault();dragDepth=0;$('drop').hidden=true;const f=e.dataTransfer.files[0];if(f)loadFile(f);});
 
-// Recording
 let rec=null,recChunks=[];
 $('rec').onclick=async()=>{
-  const b=$('rec');
-  if(rec){rec.stop();return;}
+  const b=$('rec');if(rec){rec.stop();return;}
   if(!navigator.mediaDevices||!window.MediaRecorder)return toast('Recording is not supported in this browser. Open a voice note file instead.');
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
-    recChunks=[];rec=new MediaRecorder(stream);
-    rec.ondataavailable=e=>e.data.size&&recChunks.push(e.data);
+  try{const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    recChunks=[];rec=new MediaRecorder(stream);rec.ondataavailable=e=>e.data.size&&recChunks.push(e.data);
     rec.onstop=async()=>{stream.getTracks().forEach(t=>t.stop());b.setAttribute('aria-pressed','false');b.querySelector('span').textContent='Record';rec=null;
       const blob=new Blob(recChunks,{type:recChunks[0]?.type||'audio/webm'});
       try{await setSource(await decode(await blob.arrayBuffer()),'Recording');toast('Recording loaded');}catch(e){toast('The recording could not be decoded.');}};
@@ -610,64 +898,55 @@ $('rec').onclick=async()=>{
   }catch(e){toast('Microphone access is blocked here. Record on your phone and open the file, or open the standalone index.html in your browser to record.');}
 };
 
-// Synthesized sample phrase (vowel glides through formant filters)
+/* Sample: synthesized vowel phrase with background hiss and 50 Hz mains hum, so the repair tools have something to fix. */
 function makeDemo(){
-  const sr=44100,dur=3.5,n=Math.floor(sr*dur),x=new Float32Array(n);
+  const sr=SR,dur=3.5,n=Math.floor(sr*dur),x=new Float32Array(n);
   const F={a:[730,1090,2440],e:[530,1840,2480],i:[300,2250,3000],o:[570,840,2410],u:[320,870,2240]};
   const syl=[[.15,.58,130,165,'a'],[.68,1.08,168,150,'e'],[1.2,1.78,148,190,'i'],[1.95,2.52,182,125,'o'],[2.62,3.25,128,104,'u']];
-  for(const [t0,t1,fa,fb,v] of syl){
-    const a=Math.floor(t0*sr),b=Math.floor(t1*sr),L=b-a;let ph=0;const src=new Float32Array(L);
-    for(let i=0;i<L;i++){const u=i/L,f0=fa+(fb-fa)*u+3*Math.sin(2*Math.PI*5.2*i/sr);ph+=f0/sr;ph-=Math.floor(ph);
-      src[i]=(Math.pow(ph,3)*2-1)*0.9+(Math.random()*2-1)*0.04;}
-    const out=new Float32Array(L);
+  for(const [t0,t1,fa,fb,v] of syl){const a=Math.floor(t0*sr),L=Math.floor(t1*sr)-a;let ph=0;const src=new Float32Array(L),out=new Float32Array(L);
+    for(let i=0;i<L;i++){const u=i/L,f0=fa+(fb-fa)*u+3*Math.sin(2*Math.PI*5.2*i/sr);ph+=f0/sr;ph-=Math.floor(ph);src[i]=(Math.pow(ph,3)*2-1)*0.9+(Math.random()*2-1)*0.04;}
     F[v].forEach((fc,k)=>{const w0=2*Math.PI*fc/sr,Q=fc/(70+k*40),al=Math.sin(w0)/(2*Q),a0=1+al,b0=al/a0,b2=-al/a0,a1=-2*Math.cos(w0)/a0,a2=(1-al)/a0,gain=[1,.6,.3][k];
       let x1=0,x2=0,y1=0,y2=0;for(let i=0;i<L;i++){const xi=src[i],y=b0*xi+b2*x2-a1*y1-a2*y2;x2=x1;x1=xi;y2=y1;y1=y;out[i]+=y*gain;}});
-    for(let i=0;i<L;i++){const u=i/L,env=Math.pow(Math.sin(Math.PI*Math.min(1,u*1.15)),0.6);x[a+i]+=out[i]*env;}
-  }
-  let pk=0;for(const v of x)pk=Math.max(pk,Math.abs(v));for(let i=0;i<n;i++)x[i]=x[i]/pk*.8+(Math.random()*2-1)*0.004;
-  const buf=new AudioBuffer({length:n,numberOfChannels:1,sampleRate:sr});buf.copyToChannel(x,0);return buf;
-}
-$('demo').onclick=()=>{setSource(makeDemo(),'Sample: synthesized vowel phrase');};
+    for(let i=0;i<L;i++){const u=i/L,env=Math.pow(Math.sin(Math.PI*Math.min(1,u*1.15)),0.6);x[a+i]+=out[i]*env;}}
+  let pk=0;for(const v of x)pk=Math.max(pk,Math.abs(v));
+  let b1=0,b2=0;for(let i=0;i<n;i++){const w=Math.random()*2-1;b1=.97*b1+.03*w;b2=.6*b2+.4*w;
+    const hum=0.012*Math.sin(2*Math.PI*50*i/sr)+0.007*Math.sin(2*Math.PI*150*i/sr)+0.004*Math.sin(2*Math.PI*250*i/sr);
+    x[i]=x[i]/pk*.7+(b1*0.08+b2*0.012)+hum;}
+  const buf=new AudioBuffer({length:n,numberOfChannels:1,sampleRate:sr});buf.copyToChannel(x,0);return buf;}
+$('demo').onclick=()=>setSource(makeDemo(),'Sample: noisy vowel phrase');
 
-/* ---------- Export ---------- */
+/* ---------- Export: 16-bit WAV with TPDF dither ---------- */
 function toWav(buf){
   const ch=buf.numberOfChannels,n=buf.length,sr=buf.sampleRate,size=n*ch*2,dv=new DataView(new ArrayBuffer(44+size));
   const ws=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i));};
   ws(0,'RIFF');dv.setUint32(4,36+size,true);ws(8,'WAVE');ws(12,'fmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,ch,true);
   dv.setUint32(24,sr,true);dv.setUint32(28,sr*ch*2,true);dv.setUint16(32,ch*2,true);dv.setUint16(34,16,true);ws(36,'data');dv.setUint32(40,size,true);
   const d=[];for(let c=0;c<ch;c++)d.push(buf.getChannelData(c));let o=44;
-  for(let i=0;i<n;i++)for(let c=0;c<ch;c++){const v=Math.max(-1,Math.min(1,d[c][i]));dv.setInt16(o,v<0?v*0x8000:v*0x7FFF,true);o+=2;}
-  return new Uint8Array(dv.buffer);
-}
+  for(let i=0;i<n;i++)for(let c=0;c<ch;c++){const v=d[c][i]*32767+(Math.random()-Math.random());dv.setInt16(o,Math.max(-32768,Math.min(32767,Math.round(v))),true);o+=2;}
+  return new Uint8Array(dv.buffer);}
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
 function crc32(u){let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
 function zipOne(name,data){
-  const nm=new TextEncoder().encode(name),crc=crc32(data),sz=data.length;
-  const lh=new DataView(new ArrayBuffer(30)),cd=new DataView(new ArrayBuffer(46)),eo=new DataView(new ArrayBuffer(22));
+  const nm=new TextEncoder().encode(name),crc=crc32(data),sz=data.length,lh=new DataView(new ArrayBuffer(30)),cd=new DataView(new ArrayBuffer(46)),eo=new DataView(new ArrayBuffer(22));
   lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(12,33,true);lh.setUint32(14,crc,true);lh.setUint32(18,sz,true);lh.setUint32(22,sz,true);lh.setUint16(26,nm.length,true);
-  cd.setUint32(0,0x02014b50,true);cd.setUint16(4,20,true);cd.setUint16(6,20,true);cd.setUint16(14,33,true);cd.setUint32(16,crc,true);cd.setUint32(20,sz,true);cd.setUint32(24,sz,true);cd.setUint16(28,nm.length,true);cd.setUint32(42,0,true);
-  const cdOff=30+nm.length+sz,cdSize=46+nm.length;
-  eo.setUint32(0,0x06054b50,true);eo.setUint16(8,1,true);eo.setUint16(10,1,true);eo.setUint32(12,cdSize,true);eo.setUint32(16,cdOff,true);
-  return new Blob([lh.buffer,nm,data,cd.buffer,nm,eo.buffer]);
-}
-const dlP=(window.claude&&typeof window.claude.use==='function')?window.claude.use('downloads').catch(()=>null):Promise.resolve(null);
-let downloads=null;dlP.then(d=>{downloads=d;if(d)$('exportTx').textContent='Export WAV (.zip)';});
+  cd.setUint32(0,0x02014b50,true);cd.setUint16(4,20,true);cd.setUint16(6,20,true);cd.setUint16(14,33,true);cd.setUint32(16,crc,true);cd.setUint32(20,sz,true);cd.setUint32(24,sz,true);cd.setUint16(28,nm.length,true);
+  eo.setUint32(0,0x06054b50,true);eo.setUint16(8,1,true);eo.setUint16(10,1,true);eo.setUint32(12,46+nm.length,true);eo.setUint32(16,30+nm.length+sz,true);
+  return new Blob([lh.buffer,nm,data,cd.buffer,nm,eo.buffer]);}
+let downloads=null;
+((window.claude&&typeof window.claude.use==='function')?window.claude.use('downloads').catch(()=>null):Promise.resolve(null)).then(d=>{downloads=d;if(d)$('exportTx').textContent='Export WAV (.zip)';});
 $('export').onclick=async()=>{
   if(!outBuf)return toast('Nothing to export yet. Open a voice note first.');
-  const base=(srcName&&!srcName.startsWith('Sample')?srcName.replace(/\.[^.]+$/,''):'voice-note')+'-edited'+(activePreset&&activePreset!=='Natural'?'-'+activePreset.toLowerCase().replace(/[^a-z0-9]+/g,'-'):'');
+  const base=(srcName&&!srcName.startsWith('Sample')?srcName.replace(/\.[^.]+$/,''):'voice-note')+'-edited'+(activePreset&&activePreset!=='Natural'?'-'+activePreset.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,''):'');
   const wav=toWav(outBuf);
-  if(downloads){
-    try{await downloads.save({filename:base+'.zip',data:zipOne(base+'.wav',wav)});toast('Saved '+base+'.zip. Unzip it to get the WAV file.');}
-    catch(e){toast(e&&e.code==='declined'?'Export cancelled.':'Export is not available in this view.');}
-  }else{
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([wav],{type:'audio/wav'}));a.download=base+'.wav';document.body.append(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Exported '+base+'.wav');
-  }
+  if(downloads){try{await downloads.save({filename:base+'.zip',data:zipOne(base+'.wav',wav)});toast('Saved '+base+'.zip. Unzip it to get the WAV file.');}
+    catch(e){toast(e&&e.code==='declined'?'Export cancelled.':'Export is not available in this view.');}}
+  else{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([wav],{type:'audio/wav'}));a.download=base+'.wav';document.body.append(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Exported '+base+'.wav');}
 };
 
-/* ---------- Boot: open in a working state with the sample loaded ---------- */
+/* ---------- Boot: noisy sample with the Studio enhance chain applied ---------- */
 syncUI();updateSel();
-try{applyPreset('Studio vocal',PRESETS.Studio['Studio vocal']);setSource(makeDemo(),'Sample: synthesized vowel phrase');}catch(e){console.error(e);$('srcEmpty').hidden=false;}
+try{applyPreset('Studio enhance',PRESETS.Repair['Studio enhance'],'Repair');setSource(makeDemo(),'Sample: noisy vowel phrase');}catch(e){console.error(e);$('srcEmpty').hidden=false;}
 })();
 </script>
 
