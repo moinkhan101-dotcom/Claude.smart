@@ -659,13 +659,13 @@ function loadRNN(){
 }
 async function aiDenoise(ch,tok){
   const M=await loadRNN();if(!M)return null;
-  const F=480,out=[];
+  const F=480,out=[],total=ch.length*(ch[0].length+F);let done=0;
   for(const c of ch){
     const st=M._rnnoise_create(0),ptr=M._malloc(F*4),n=c.length,y=new Float32Array(n+F*2);
     for(let i=0,f=0;i<n+F;i+=F,f++){
       const heap=M.HEAPF32,o=ptr>>2;for(let j=0;j<F;j++){const v=c[i+j];heap[o+j]=(v===undefined?0:v)*32768;}
       M._rnnoise_process_frame(st,ptr,ptr);const h2=M.HEAPF32;for(let j=0;j<F;j++)y[i+j]=h2[o+j]/32768;
-      if(f%300===299){await new Promise(r=>setTimeout(r));if(tok!==renderTok){M._free(ptr);M._rnnoise_destroy(st);return 'abort';}}}
+      done+=F;if(f%300===299){status(true,'Isolating voice… '+Math.min(99,Math.round(done/total*100))+'%');await new Promise(r=>setTimeout(r));if(tok!==renderTok){M._free(ptr);M._rnnoise_destroy(st);return 'abort';}}}
     M._free(ptr);M._rnnoise_destroy(st);
     const lag=findLag(c,y);out.push(y.slice(lag,lag+n));}
   return out;
@@ -887,7 +887,9 @@ function uiPlay(){$('playIco').innerHTML=playing?'<rect x="6" y="5" width="4" he
 function updateClock(){const p=pos(),D=curDur();$('clock').textContent=fmtT(p)+' / '+fmtT(D);
   $('outPh').style.left=((D?p/D:0)*100)+'%';$('outPh').hidden=abOrig;
   const sp=$('srcPh');sp.hidden=!abOrig||!srcBuf;if(srcBuf)sp.style.left=((trim[0]+p)/srcBuf.duration*100)+'%';}
-$('play').onclick=()=>{if(!srcBuf)return toast('Open a voice note or load the sample first.');playing?pausePlay():play(offset);};
+$('play').onclick=()=>{if(!srcBuf)return toast('Open a voice note or load the sample first.');
+  if(!abOrig&&!outBuf)return toast('Still applying effects: '+$('statusTx').textContent+' Press Original to hear the unedited audio meanwhile.');
+  playing?pausePlay():play(offset);};
 $('stop').onclick=()=>stopPlay();
 $('loop').onclick=e=>{loop=!loop;e.currentTarget.setAttribute('aria-pressed',loop);};
 $('ab').onclick=e=>{const was=playing,f=curDur()?pos()/curDur():0;abOrig=!abOrig;e.currentTarget.setAttribute('aria-pressed',abOrig);offset=f*curDur();if(was)play(offset);else updateClock();};
@@ -903,13 +905,15 @@ const mbuf=new Float32Array(2048);
 function setMeter(d,p){const f=(d+60)/60,pf=(p+60)/60,el=$('mFill');el.style.width=(f*100)+'%';el.style.setProperty('--mw',(f>0?100/f:100)+'%');$('mPeak').style.left='calc('+(pf*100)+'% - 2px)';$('mPeak').hidden=p<=-59;}
 
 /* ---------- Loading audio (everything is resampled to 48 kHz) ---------- */
+/* Resample to 48 kHz mono. Voice notes are mono recordings even when saved as stereo, and one channel halves the processing time. */
 async function to48k(buf){
-  if(buf.sampleRate===SR)return buf;
-  const ch=Math.min(2,buf.numberOfChannels),ctx=new OfflineAudioContext(ch,Math.ceil(buf.duration*SR),SR),s=ctx.createBufferSource();
+  if(buf.sampleRate===SR&&buf.numberOfChannels===1)return buf;
+  const ctx=new OfflineAudioContext(1,Math.ceil(buf.duration*SR),SR),s=ctx.createBufferSource();
   s.buffer=buf;s.connect(ctx.destination);s.start();return ctx.startRendering();}
 async function setSource(buf,name){
   stopPlay();status(true,'Preparing…');srcBuf=await to48k(buf);srcName=name;trim=[0,srcBuf.duration];
-  for(const k in cache)cache[k]={};outBuf=null;
+  for(const k in cache)cache[k]={};outBuf=null;drawOut();
+  for(const id of ['stLen','stLufs','stPeak','stNoise'])$(id).textContent='—';updateClock();
   if(txSegs&&txSegs.length){txSegs=[];$('txSegs').hidden=true;$('txActs').hidden=true;}
   $('srcEmpty').hidden=true;updateSel();measureSrc();drawWave($('srcCv'),srcBuf);
   await render();}
