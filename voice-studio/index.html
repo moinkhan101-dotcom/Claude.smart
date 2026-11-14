@@ -1033,6 +1033,14 @@ function scriptBan(lang){
     else for(let i=0;i<by.length;i++)if(by[i]===0xE0&&(i===by.length-1||by[i+1]===0xA4||by[i+1]===0xA5)){bad=true;break;}
     if(bad)out.push([id]);}
   return banCache[key]=out;}
+/* Whisper can get stuck repeating one word ("kie kie kie ..."), or answer in the wrong alphabet. Detect both. */
+function stuck(text,lang,translate){
+  const w=(text||'').trim().split(/\\s+/).filter(Boolean);
+  if(w.length>=10){let run=1,max=1;for(let i=1;i<w.length;i++){run=w[i]===w[i-1]?run+1:1;if(run>max)max=run;}
+    if(max>=6||new Set(w).size/w.length<0.25)return true;}
+  if(!translate&&(lang==='hindi'||lang==='urdu')){const lat=(text.match(/[A-Za-z]/g)||[]).length,all=(text.match(/\\p{L}/gu)||[]).length;if(all>8&&lat/all>0.6)return true;}
+  return false;}
+function collapse(text){return (text||'').replace(/(^|\\s)(\\S+)(?:\\s+\\2)+(?=\\s|$)/gu,'$1$2');}
 function pieces(a,sr){const out=[],W=Math.floor(0.05*sr);let s=0;
   while(s<a.length){if(a.length-s<=30*sr){out.push([s,a.length]);break;}
     let best=s+30*sr,be=Infinity;
@@ -1042,7 +1050,7 @@ function pieces(a,sr){const out=[],W=Math.floor(0.05*sr);let s=0;
 self.onmessage=async e=>{const d=e.data;
   try{
     if(!asr||cur!==d.model){asr=null;await load(d.model);cur=d.model;}
-    const sr=16000,ps=pieces(d.audio,sr);
+    const sr=16000,ps=pieces(d.audio,sr);let unlocked=0,unclear=0;
     self.postMessage({type:'run',dev,total:ps.length});
     const o={return_timestamps:true,task:d.translate?'translate':'transcribe',language:d.language};
     if(!d.translate){try{const ban=scriptBan(d.language);if(ban&&ban.length)o.bad_words_ids=ban;}catch(e){}}
@@ -1050,11 +1058,15 @@ self.onmessage=async e=>{const d=e.data;
       const [a,b]=ps[k],seg=d.audio.subarray(a,b);let ms=0;for(let i=0;i<seg.length;i+=4)ms+=seg[i]*seg[i];ms/=seg.length/4;
       let chunks=[];
       if(ms>1e-5&&seg.length>sr*0.3){
-        const out=await asr(seg,o),off=a/sr,len=(b-a)/sr;
+        const off=a/sr,len=(b-a)/sr;
+        let out=await asr(seg,o);
+        if(stuck(out&&out.text,d.language,d.translate)&&o.bad_words_ids){const o2={...o};delete o2.bad_words_ids;out=await asr(seg,o2);unlocked++;}
+        if(stuck(out&&out.text,d.language,d.translate)){out=await asr(seg,{...o,no_repeat_ngram_size:3});
+          if(stuck(out&&out.text,d.language,d.translate)){out={text:collapse(out&&out.text),chunks:(out&&out.chunks||[]).map(c=>({...c,text:collapse(c.text)}))};unclear++;}}
         chunks=((out&&out.chunks&&out.chunks.length)?out.chunks:[{timestamp:[0,len],text:(out&&out.text)||''}])
           .map(c=>({a:off+(c.timestamp[0]||0),b:off+(c.timestamp[1]==null?len:Math.min(len,c.timestamp[1])),text:(c.text||'').trim()}));
       }
-      self.postMessage({type:'part',chunks,done:k+1,total:ps.length});
+      self.postMessage({type:'part',chunks,done:k+1,total:ps.length,unlocked,unclear});
     }
     self.postMessage({type:'done'});
   }catch(err){self.postMessage({type:'error',message:String(err&&err.message||err)});}
@@ -1071,7 +1083,7 @@ $('txGo').onclick=async()=>{
   if(txBusy){if(txWorker){txWorker.terminate();txWorker=null;}txSetIdle();txProg(null);txMsg(txSegs.length?'Stopped. The text so far is kept below.':'Stopped.');return;}
   if(!srcBuf)return toast('Open a voice note first.');
   txBusy=true;$('txGo').textContent='Stop';$('txGo').classList.remove('primary');txProg(0);txMsg('Preparing audio…');
-  txSegs=[];txLast=-1;$('txSegs').innerHTML='';$('txSegs').hidden=true;$('txActs').hidden=true;
+  txSegs=[];txLast=-1;txFlags={unlocked:0,unclear:0};$('txSegs').innerHTML='';$('txSegs').hidden=true;$('txActs').hidden=true;
   try{
     const useClean=$('txSrc').value==='clean'&&cache.rep.ch;
     const ch=useClean?cache.rep.ch:(cache.base.ch||baseChannels());
@@ -1087,7 +1099,7 @@ $('txGo').onclick=async()=>{
       else if(d.type==='note'){toast(d.text);}
       else if(d.type==='run'){clearTimeout(timer);started=performance.now();devName=d.dev==='gpu'?'on your graphics card':'on your processor';txProg(0);
         txMsg('Transcribing '+devName+'… part 1 of '+d.total+'.');$('txSegs').hidden=false;}
-      else if(d.type==='part'){txAppend(d.chunks);txProg(d.done/d.total);
+      else if(d.type==='part'){txFlags={unlocked:d.unlocked||0,unclear:d.unclear||0};txAppend(d.chunks);txProg(d.done/d.total);
         const el=(performance.now()-started)/1000,left=el/d.done*(d.total-d.done);
         if(d.done<d.total)txMsg('Transcribing '+devName+'… '+d.done+' of '+d.total+' parts done ('+Math.round(d.done/d.total*100)+'%) · about '+fmtDur(left)+' left.');}
       else if(d.type==='done'){txFinish((performance.now()-started)/1000,devName);}
@@ -1106,10 +1118,14 @@ function txAppend(chunks){
     r.append(b,t);s.el=r;box.append(r);}
   if(txSegs.length){box.hidden=false;$('txActs').hidden=false;txStats();}
 }
+var txFlags={unlocked:0,unclear:0};
 function txFinish(secs,devName){
   txSetIdle();txProg(null);
   if(!txSegs.length){txMsg('No speech was found in this selection.');$('txSegs').hidden=true;$('txActs').hidden=true;return;}
-  txMsg('Done in '+fmtDur(secs)+' '+devName+'. '+(txMeta.rev?'The clip is reversed, so timestamps will not line up with playback. ':'')+'Click any line to correct it before copying or saving.');
+  const lang=$('txLang').selectedOptions[0].textContent.split(' (')[0],other=lang==='Hindi'?'Urdu':'Hindi';
+  const notes=(txFlags.unlocked?txFlags.unlocked+' part'+(txFlags.unlocked>1?'s':'')+' could only be written in '+other+' script, which Whisper does for this speech. ':'')+
+    (txFlags.unclear?txFlags.unclear+' part'+(txFlags.unclear>1?'s were':' was')+' unclear and may contain mistakes; try the Accurate model. ':'');
+  txMsg('Done in '+fmtDur(secs)+' '+devName+'. '+notes+(txMeta.rev?'The clip is reversed, so timestamps will not line up with playback. ':'')+'Click any line to correct it before copying or saving.');
 }
 function txStats(){const words=txSegs.map(s=>s.text).join(' ').split(/\s+/).filter(Boolean).length,d=txMeta?txMeta.dur:0;
   $('txStats').textContent=words+' words · '+(d>0?Math.round(words/d*60):0)+' words/min';}
