@@ -193,12 +193,12 @@ input[type=range]::-moz-range-thumb{width:10px;height:10px;border-radius:50%;bac
   </section>
 
   <section class="tx" aria-label="Transcript">
-    <div class="tx-head"><h2>Speech to text</h2><span class="hint">Whisper speech recognition, running on your device. Click a timestamp to play from there; click text to fix a word.</span></div>
+    <div class="tx-head"><h2>Speech to text</h2><span class="hint">Whisper speech recognition on your device, using your graphics card when the browser allows. Click a timestamp to play from there; click text to fix a word.</span></div>
     <div class="tx-opts">
       <label>Model<select id="txModel">
-        <option value="onnx-community/whisper-tiny">Fast · Whisper tiny · 40 MB</option>
-        <option value="onnx-community/whisper-base" selected>Balanced · Whisper base · 80 MB</option>
-        <option value="onnx-community/whisper-small">Accurate · Whisper small · 250 MB</option></select></label>
+        <option value="onnx-community/whisper-tiny">Fast · Whisper tiny</option>
+        <option value="onnx-community/whisper-base" selected>Balanced · Whisper base</option>
+        <option value="onnx-community/whisper-small">Accurate · Whisper small (best for Hindi, Urdu)</option></select></label>
       <label>Spoken language<select id="txLang">
         <option value="english">English</option><option value="hindi">Hindi (Devanagari script)</option><option value="urdu">Urdu (Urdu script)</option><option value="arabic">Arabic</option>
         <option value="bengali">Bengali</option><option value="punjabi">Punjabi</option><option value="persian">Persian</option><option value="turkish">Turkish</option><option value="spanish">Spanish</option>
@@ -1000,29 +1000,78 @@ const TX_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.2/dist/
 try{const l=localStorage.getItem('vns-lang');if(l&&[...$('txLang').options].some(o=>o.value===l))$('txLang').value=l;}catch(e){}
 $('txLang').onchange=()=>{try{localStorage.setItem('vns-lang',$('txLang').value);}catch(e){}};
 var txWorker=null,txBusy=false,txSegs=[],txMeta=null,txLast=-1; // var: read by the playback loop before this block runs
+/* Worker: loads Whisper on the graphics card (WebGPU) when available, otherwise on the processor (WASM).
+   Audio is cut into pieces of up to 30 s at the quietest moment, so text arrives piece by piece with progress. */
 function txWorkerSrc(){return `import { pipeline, env } from '${TX_LIB}';
 env.allowLocalModels=false;
-let asr=null,cur=null;
+let asr=null,cur=null,dev=null;
+async function load(model){
+  const files={};
+  const progress_callback=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const k in files){a+=files[k][0];b+=files[k][1];}self.postMessage({type:'dl',loaded:a,total:b});}};
+  let gpu=false,f16=false;
+  try{if(self.navigator&&navigator.gpu){const ad=await navigator.gpu.requestAdapter();if(ad){gpu=true;f16=ad.features.has('shader-f16');}}}catch(e){}
+  if(gpu){
+    try{asr=await pipeline('automatic-speech-recognition',model,{device:'webgpu',dtype:{encoder_model:f16?'fp16':'fp32',decoder_model_merged:'q4'},progress_callback});dev='gpu';return;}
+    catch(e){self.postMessage({type:'note',text:'Graphics card could not be used ('+(e&&e.message||e)+'). Using the processor instead.'});}
+  }
+  asr=await pipeline('automatic-speech-recognition',model,{device:'wasm',dtype:'q8',progress_callback});dev='cpu';
+}
+/* Hindi and Urdu are one spoken language in two scripts, and Whisper often writes Urdu script for Hindi.
+   Ban every vocabulary token holding bytes of the other script: Arabic-script UTF-8 lead bytes D8-DF for Hindi,
+   Devanagari (E0 A4/E0 A5) for Urdu. Whisper's vocabulary is byte-level BPE, so tokens are mapped back to bytes. */
+const U2B=(()=>{const bs=[];for(let i=33;i<127;i++)bs.push(i);for(let i=161;i<173;i++)bs.push(i);for(let i=174;i<256;i++)bs.push(i);
+  const cs=bs.slice();let n=0;for(let b=0;b<256;b++)if(!bs.includes(b)){bs.push(b);cs.push(256+n);n++;}
+  const m=new Map();bs.forEach((b,i)=>m.set(String.fromCharCode(cs[i]),b));return m;})();
+const banCache={};
+function scriptBan(lang){
+  if(lang!=='hindi'&&lang!=='urdu')return null;const key=cur+'|'+lang;if(banCache[key])return banCache[key];
+  const vocab=asr.tokenizer.model.vocab,out=[];
+  for(let id=0;id<vocab.length;id++){const t=vocab[id];if(!t)continue;const by=[];
+    for(const ch of t){const b=U2B.get(ch);if(b===undefined){by.length=0;break;}by.push(b);}
+    let bad=false;
+    if(lang==='hindi'){for(const b of by)if(b>=0xD8&&b<=0xDF){bad=true;break;}}
+    else for(let i=0;i<by.length;i++)if(by[i]===0xE0&&(i===by.length-1||by[i+1]===0xA4||by[i+1]===0xA5)){bad=true;break;}
+    if(bad)out.push([id]);}
+  return banCache[key]=out;}
+function pieces(a,sr){const out=[],W=Math.floor(0.05*sr);let s=0;
+  while(s<a.length){if(a.length-s<=30*sr){out.push([s,a.length]);break;}
+    let best=s+30*sr,be=Infinity;
+    for(let p=s+20*sr;p+W<=s+30*sr;p+=W>>1){let e=0;for(let i=p;i<p+W;i+=2)e+=a[i]*a[i];if(e<be){be=e;best=p+(W>>1);}}
+    out.push([s,best]);s=best;}
+  return out;}
 self.onmessage=async e=>{const d=e.data;
   try{
-    if(!asr||cur!==d.model){const files={};
-      asr=await pipeline('automatic-speech-recognition',d.model,{dtype:'q8',device:'wasm',progress_callback:p=>{
-        if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];let a=0,b=0;for(const k in files){a+=files[k][0];b+=files[k][1];}self.postMessage({type:'dl',loaded:a,total:b});}}});
-      cur=d.model;}
-    self.postMessage({type:'run'});
-    const o={chunk_length_s:30,stride_length_s:5,return_timestamps:true,task:d.translate?'translate':'transcribe'};
-    if(d.language)o.language=d.language;
-    const out=await asr(d.audio,o);
-    self.postMessage({type:'done',out});
+    if(!asr||cur!==d.model){asr=null;await load(d.model);cur=d.model;}
+    const sr=16000,ps=pieces(d.audio,sr);
+    self.postMessage({type:'run',dev,total:ps.length});
+    const o={return_timestamps:true,task:d.translate?'translate':'transcribe',language:d.language};
+    if(!d.translate){try{const ban=scriptBan(d.language);if(ban&&ban.length)o.bad_words_ids=ban;}catch(e){}}
+    for(let k=0;k<ps.length;k++){
+      const [a,b]=ps[k],seg=d.audio.subarray(a,b);let ms=0;for(let i=0;i<seg.length;i+=4)ms+=seg[i]*seg[i];ms/=seg.length/4;
+      let chunks=[];
+      if(ms>1e-5&&seg.length>sr*0.3){
+        const out=await asr(seg,o),off=a/sr,len=(b-a)/sr;
+        chunks=((out&&out.chunks&&out.chunks.length)?out.chunks:[{timestamp:[0,len],text:(out&&out.text)||''}])
+          .map(c=>({a:off+(c.timestamp[0]||0),b:off+(c.timestamp[1]==null?len:Math.min(len,c.timestamp[1])),text:(c.text||'').trim()}));
+      }
+      self.postMessage({type:'part',chunks,done:k+1,total:ps.length});
+    }
+    self.postMessage({type:'done'});
   }catch(err){self.postMessage({type:'error',message:String(err&&err.message||err)});}
 };`;}
 function txMsg(t,bad){const m=$('txMsg');m.textContent=t;m.classList.toggle('bad',!!bad);}
 function txProg(f){$('txProg').hidden=f==null;if(f!=null)$('txBar').style.width=(Math.max(0,Math.min(1,f))*100)+'%';}
 async function to16kMono(ch){const n=ch[0].length,b=new AudioBuffer({length:n,numberOfChannels:1,sampleRate:SR});b.copyToChannel(local.mono(ch),0);
-  const ctx=new OfflineAudioContext(1,Math.ceil(n/3),16000),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();return (await ctx.startRendering()).getChannelData(0);}
+  const ctx=new OfflineAudioContext(1,Math.ceil(n/3),16000),s=ctx.createBufferSource();s.buffer=b;s.connect(ctx.destination);s.start();
+  const a=Float32Array.from((await ctx.startRendering()).getChannelData(0));let pk=0;for(const v of a){const x=Math.abs(v);if(x>pk)pk=x;}
+  if(pk>1e-4){const g=0.9/pk;for(let i=0;i<a.length;i++)a[i]*=g;}return a;}
+const fmtDur=s=>s<60?Math.max(1,Math.round(s))+' s':Math.round(s/60)+' min';
+function txSetIdle(){txBusy=false;$('txGo').textContent='Transcribe';$('txGo').classList.add('primary');}
 $('txGo').onclick=async()=>{
-  if(!srcBuf)return toast('Open a voice note first.');if(txBusy)return;
-  txBusy=true;$('txGo').disabled=true;txProg(0);txMsg('Preparing audio…');
+  if(txBusy){if(txWorker){txWorker.terminate();txWorker=null;}txSetIdle();txProg(null);txMsg(txSegs.length?'Stopped. The text so far is kept below.':'Stopped.');return;}
+  if(!srcBuf)return toast('Open a voice note first.');
+  txBusy=true;$('txGo').textContent='Stop';$('txGo').classList.remove('primary');txProg(0);txMsg('Preparing audio…');
+  txSegs=[];txLast=-1;$('txSegs').innerHTML='';$('txSegs').hidden=true;$('txActs').hidden=true;
   try{
     const useClean=$('txSrc').value==='clean'&&cache.rep.ch;
     const ch=useClean?cache.rep.ch:(cache.base.ch||baseChannels());
@@ -1030,30 +1079,37 @@ $('txGo').onclick=async()=>{
     txMeta={tempo:S.pitch.on?S.pitch.tempo/100:1,rev:S.out.rev,dur:audio.length/16000};
     if(!txWorker){const url=URL.createObjectURL(new Blob([txWorkerSrc()],{type:'text/javascript'}));txWorker=new Worker(url,{type:'module'});}
     txMsg('Loading the speech model…');
-    const timer=setTimeout(()=>{if(txBusy&&$('txBar').style.width==='0%')txFail('The speech model did not start downloading.');},45000);
+    let started=0,devName='';
+    const timer=setTimeout(()=>{if(txBusy&&!started&&$('txBar').style.width==='0%')txFail('The speech model did not start downloading.');},60000);
     txWorker.onerror=ev=>{if(ev.preventDefault)ev.preventDefault();clearTimeout(timer);txWorker=null;txFail('The speech-recognition library could not load.');};
     txWorker.onmessage=e=>{const d=e.data;
-      if(d.type==='dl'){txProg(d.loaded/d.total*0.9);txMsg('Downloading model: '+(d.loaded/1048576).toFixed(0)+' of '+(d.total/1048576).toFixed(0)+' MB (one time only)…');}
-      else if(d.type==='run'){clearTimeout(timer);txProg(0.95);txMsg('Transcribing '+txMeta.dur.toFixed(1)+' s of audio…');}
-      else if(d.type==='done'){clearTimeout(timer);txDone(d.out);}
+      if(d.type==='dl'){txProg(d.loaded/d.total);txMsg('Downloading model: '+(d.loaded/1048576).toFixed(0)+' of '+(d.total/1048576).toFixed(0)+' MB (one time only)…');}
+      else if(d.type==='note'){toast(d.text);}
+      else if(d.type==='run'){clearTimeout(timer);started=performance.now();devName=d.dev==='gpu'?'on your graphics card':'on your processor';txProg(0);
+        txMsg('Transcribing '+devName+'… part 1 of '+d.total+'.');$('txSegs').hidden=false;}
+      else if(d.type==='part'){txAppend(d.chunks);txProg(d.done/d.total);
+        const el=(performance.now()-started)/1000,left=el/d.done*(d.total-d.done);
+        if(d.done<d.total)txMsg('Transcribing '+devName+'… '+d.done+' of '+d.total+' parts done ('+Math.round(d.done/d.total*100)+'%) · about '+fmtDur(left)+' left.');}
+      else if(d.type==='done'){txFinish((performance.now()-started)/1000,devName);}
       else if(d.type==='error'){clearTimeout(timer);txFail(d.message);}};
     txWorker.postMessage({model:$('txModel').value,language:$('txLang').value,translate:$('txTrans').checked,audio});
   }catch(e){txFail(e.message);}
 };
-function txFail(why){txBusy=false;$('txGo').disabled=false;txProg(null);
+function txFail(why){txSetIdle();txProg(null);
   txMsg('Speech to text could not run here ('+why+'). This view may block the model download from huggingface.co. Open the standalone voice-studio/index.html in Chrome, Edge or Firefox, where it runs on your device.',true);}
-function txDone(out){
-  txBusy=false;$('txGo').disabled=false;txProg(null);
-  const chunks=(out&&out.chunks&&out.chunks.length)?out.chunks:[{timestamp:[0,txMeta.dur],text:(out&&out.text)||''}];
-  txSegs=chunks.map(c=>({a:c.timestamp[0]||0,b:c.timestamp[1]==null?txMeta.dur:c.timestamp[1],text:(c.text||'').trim()})).filter(s=>s.text);
-  const box=$('txSegs');box.innerHTML='';
-  if(!txSegs.length){txMsg('No speech was found in this selection.');box.hidden=true;$('txActs').hidden=true;return;}
-  txSegs.forEach((s,i)=>{const r=document.createElement('div');r.className='seg-row';
+function txAppend(chunks){
+  const box=$('txSegs');
+  for(const c of chunks){if(!c.text)continue;const s={a:c.a,b:c.b,text:c.text};txSegs.push(s);
+    const r=document.createElement('div');r.className='seg-row';
     const b=document.createElement('button');b.textContent=fmtT(s.a).replace(/\.\d+$/,'');b.title='Play from here';b.onclick=()=>seekToSpeech(s.a);
     const t=document.createElement('div');t.contentEditable='true';t.spellcheck=true;t.textContent=s.text;t.oninput=()=>{s.text=t.textContent;txStats();};
-    r.append(b,t);s.el=r;box.append(r);});
-  box.hidden=false;$('txActs').hidden=false;txStats();
-  txMsg('Done. '+(txMeta.rev?'The clip is reversed, so timestamps will not line up with playback. ':'')+'Click any line to correct it before copying or saving.');
+    r.append(b,t);s.el=r;box.append(r);}
+  if(txSegs.length){box.hidden=false;$('txActs').hidden=false;txStats();}
+}
+function txFinish(secs,devName){
+  txSetIdle();txProg(null);
+  if(!txSegs.length){txMsg('No speech was found in this selection.');$('txSegs').hidden=true;$('txActs').hidden=true;return;}
+  txMsg('Done in '+fmtDur(secs)+' '+devName+'. '+(txMeta.rev?'The clip is reversed, so timestamps will not line up with playback. ':'')+'Click any line to correct it before copying or saving.');
 }
 function txStats(){const words=txSegs.map(s=>s.text).join(' ').split(/\s+/).filter(Boolean).length,d=txMeta?txMeta.dur:0;
   $('txStats').textContent=words+' words · '+(d>0?Math.round(words/d*60):0)+' words/min';}

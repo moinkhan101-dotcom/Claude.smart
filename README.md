@@ -26,6 +26,9 @@
 
 **Speech to text**
 - Whisper speech recognition (tiny, base or small model) running on your device via transformers.js. The model downloads from huggingface.co once, then your browser caches it.
+- Uses the graphics card (WebGPU) when the browser allows, falling back to the processor
+- Splits audio into pieces of up to 30 s at natural pauses, so text, progress and a time estimate appear as it goes, and a Stop button keeps the text so far
+- Hindi/Urdu script lock: Whisper often writes Urdu script for Hindi speech, so tokens of the other script are banned from the output
 - 17 languages (choose the spoken language; transformers.js has no automatic language detection and would otherwise assume English), plus "Translate to English"
 - Can listen to the cleaned voice (after Repair) for better accuracy on noisy notes
 - Editable transcript with clickable timestamps that jump playback; the current line highlights while playing
